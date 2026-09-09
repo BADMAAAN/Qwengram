@@ -57,6 +57,8 @@ public func qwengramBotsController(context: AccountContext) -> ViewController {
             pushControllerImpl?(qwengramQwenAssistantController(context: context))
         } else if bot.id == "summarizer" {
             pushControllerImpl?(qwengramSummarizerController(context: context))
+        } else if bot.id == "translator" {
+            pushControllerImpl?(qwengramTranslatorController(context: context))
         } else if bot.id == "qr-tools" {
             pushControllerImpl?(qwengramQRToolsController(context: context))
         }

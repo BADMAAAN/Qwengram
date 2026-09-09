@@ -39,6 +39,10 @@ are not implemented.
 Summarizer is functional and uses the configured Qwen provider. Submitted text
 and generated summaries remain in-memory only.
 
+Translator is functional and uses the configured Qwen provider. Source text and
+translations remain in-memory only; its initial target-language list is
+intentionally small.
+
 Planned modules:
 - Privacy
 - History
