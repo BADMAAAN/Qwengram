@@ -6,4 +6,5 @@ public enum QwengramAIError: Error, Equatable {
     case httpStatus(Int)
     case decoding
     case emptyResponse
+    case streamEndedUnexpectedly
 }

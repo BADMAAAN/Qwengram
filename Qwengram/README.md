@@ -32,8 +32,9 @@ QR Tools is the first functional Bots Hub utility: it generates QR codes locally
 on-device. No bot-network execution or integration exists yet.
 
 Qwen credentials are stored in Keychain. Qwen Assistant is the first functional
-AI entry and requires a user-supplied Qwen API key. Its conversation is
-in-memory only; streaming, attachments, and persistence are not implemented yet.
+AI entry and requires a user-supplied Qwen API key. It supports streaming text
+responses; its conversation remains in-memory only. Attachments and persistence
+are not implemented.
 
 Planned modules:
 - Privacy

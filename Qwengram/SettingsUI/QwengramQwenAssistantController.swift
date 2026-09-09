@@ -83,7 +83,8 @@ public func qwengramQwenAssistantController(context: AccountContext) -> ViewCont
     var input = ""
     var messages: [QwengramAIMessage] = []
     var isSending = false
-    var controller: ItemListController?
+    var streamingTask: QwengramAIStreamingTask?
+    weak var controller: ItemListController?
     let refresh: () -> Void = {
         updateValue += 1
         updatePromise.set(updateValue)
@@ -116,16 +117,38 @@ public func qwengramQwenAssistantController(context: AccountContext) -> ViewCont
             return
         }
         messages.append(QwengramAIMessage(role: .user, content: text))
+        messages.append(QwengramAIMessage(role: .assistant, content: ""))
         input = ""
         isSending = true
         refresh()
-        QwengramQwenProvider(apiKey: apiKey).generateText(model: model, messages: messages) { result in
+        let requestMessages = Array(messages.dropLast())
+        let provider = QwengramQwenProvider(apiKey: apiKey)
+        streamingTask = provider.streamText(model: model, messages: requestMessages, onUpdate: { text in
+            Queue.mainQueue().async {
+                guard let controller, controller.isViewLoaded, controller.view.window != nil, isSending, !messages.isEmpty else {
+                    streamingTask?.cancel()
+                    return
+                }
+                messages[messages.count - 1] = QwengramAIMessage(role: .assistant, content: messages[messages.count - 1].content + text)
+                refresh()
+            }
+        }, completion: { result in
             Queue.mainQueue().async {
                 isSending = false
+                streamingTask = nil
+                guard let controller, controller.isViewLoaded, controller.view.window != nil else {
+                    return
+                }
                 switch result {
-                case let .success(response):
-                    messages.append(QwengramAIMessage(role: .assistant, content: response))
+                case .success:
+                    if messages.last?.content.isEmpty == true {
+                        messages.removeLast()
+                        showError("Qwen returned an empty response. Try again.")
+                    }
                 case let .failure(error):
+                    if messages.last?.content.isEmpty == true {
+                        messages.removeLast()
+                    }
                     let message: String
                     switch error {
                     case .invalidRequest:
@@ -138,6 +161,8 @@ public func qwengramQwenAssistantController(context: AccountContext) -> ViewCont
                         message = "Qwen returned an unreadable response. Try again later."
                     case .emptyResponse:
                         message = "Qwen returned an empty response. Try again."
+                    case .streamEndedUnexpectedly:
+                        message = "Qwen stopped responding unexpectedly. Try again."
                     }
                     showError(message)
                 }
