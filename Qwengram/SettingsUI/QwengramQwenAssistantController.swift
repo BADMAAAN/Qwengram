@@ -10,10 +10,12 @@ import TelegramPresentationData
 private final class QwengramQwenAssistantArguments {
     let updateInput: (String) -> Void
     let send: () -> Void
+    let stop: () -> Void
 
-    init(updateInput: @escaping (String) -> Void, send: @escaping () -> Void) {
+    init(updateInput: @escaping (String) -> Void, send: @escaping () -> Void, stop: @escaping () -> Void) {
         self.updateInput = updateInput
         self.send = send
+        self.stop = stop
     }
 }
 
@@ -23,17 +25,18 @@ private enum QwengramQwenAssistantEntry: ItemListNodeEntry {
     case loading(Int32, Int32)
     case input(Int32, Int32, String, Bool)
     case send(Int32, Int32, Bool)
+    case stop(Int32, Int32)
 
     var section: ItemListSectionId {
         switch self {
-        case let .header(_, section, _), let .message(_, section, _), let .loading(_, section), let .input(_, section, _, _), let .send(_, section, _):
+        case let .header(_, section, _), let .message(_, section, _), let .loading(_, section), let .input(_, section, _, _), let .send(_, section, _), let .stop(_, section):
             return section
         }
     }
 
     var stableId: Int32 {
         switch self {
-        case let .header(id, _, _), let .message(id, _, _), let .loading(id, _), let .input(id, _, _, _), let .send(id, _, _):
+        case let .header(id, _, _), let .message(id, _, _), let .loading(id, _), let .input(id, _, _, _), let .send(id, _, _), let .stop(id, _):
             return id
         }
     }
@@ -50,6 +53,8 @@ private enum QwengramQwenAssistantEntry: ItemListNodeEntry {
             return lId == rId && lSection == rSection && lText == rText && lEnabled == rEnabled
         case let (.send(lId, lSection, lEnabled), .send(rId, rSection, rEnabled)):
             return lId == rId && lSection == rSection && lEnabled == rEnabled
+        case let (.stop(lId, lSection), .stop(rId, rSection)):
+            return lId == rId && lSection == rSection
         default:
             return false
         }
@@ -73,6 +78,8 @@ private enum QwengramQwenAssistantEntry: ItemListNodeEntry {
             return ItemListSingleLineInputItem(presentationData: presentationData, systemStyle: .glass, title: NSAttributedString(string: "Message", textColor: presentationData.theme.list.itemPrimaryTextColor), text: text, placeholder: "Ask Qwen", type: .regular(capitalization: true, autocorrection: true), clearType: .onFocus, sectionId: section, textUpdated: enabled ? arguments.updateInput : { _ in }, action: {})
         case let .send(_, section, enabled):
             return ItemListActionItem(presentationData: presentationData, systemStyle: .glass, title: "Send", kind: .generic, alignment: .natural, sectionId: section, style: .blocks, action: enabled ? arguments.send : {})
+        case let .stop(_, section):
+            return ItemListActionItem(presentationData: presentationData, systemStyle: .glass, title: "Stop generating", kind: .generic, alignment: .natural, sectionId: section, style: .blocks, action: arguments.stop)
         }
     }
 }
@@ -84,6 +91,7 @@ public func qwengramQwenAssistantController(context: AccountContext) -> ViewCont
     var messages: [QwengramAIMessage] = []
     var isSending = false
     var streamingTask: QwengramAIStreamingTask?
+    var streamingGeneration = 0
     weak var controller: ItemListController?
     let refresh: () -> Void = {
         updateValue += 1
@@ -92,6 +100,20 @@ public func qwengramQwenAssistantController(context: AccountContext) -> ViewCont
     let showError: (String) -> Void = { text in
         let presentationData = context.sharedContext.currentPresentationData.with { $0 }
         controller?.present(textAlertController(context: context, title: "Qwen Assistant", text: text, actions: [TextAlertAction(type: .defaultAction, title: presentationData.strings.Common_OK, action: {})]), in: .window(.root))
+    }
+    let stop: () -> Void = {
+        guard isSending else {
+            return
+        }
+        isSending = false
+        streamingGeneration += 1
+        let task = streamingTask
+        streamingTask = nil
+        if messages.last?.content.isEmpty == true {
+            messages.removeLast()
+        }
+        refresh()
+        task?.cancel()
     }
     let arguments = QwengramQwenAssistantArguments(updateInput: { value in
         input = value
@@ -120,13 +142,14 @@ public func qwengramQwenAssistantController(context: AccountContext) -> ViewCont
         messages.append(QwengramAIMessage(role: .assistant, content: ""))
         input = ""
         isSending = true
+        streamingGeneration += 1
+        let generation = streamingGeneration
         refresh()
         let requestMessages = Array(messages.dropLast())
         let provider = QwengramQwenProvider(apiKey: apiKey)
         streamingTask = provider.streamText(model: model, messages: requestMessages, onUpdate: { text in
             Queue.mainQueue().async {
-                guard let controller, controller.isViewLoaded, controller.view.window != nil, isSending, !messages.isEmpty else {
-                    streamingTask?.cancel()
+                guard generation == streamingGeneration, let controller, controller.isViewLoaded, controller.view.window != nil, isSending, !messages.isEmpty else {
                     return
                 }
                 messages[messages.count - 1] = QwengramAIMessage(role: .assistant, content: messages[messages.count - 1].content + text)
@@ -134,6 +157,9 @@ public func qwengramQwenAssistantController(context: AccountContext) -> ViewCont
             }
         }, completion: { result in
             Queue.mainQueue().async {
+                guard generation == streamingGeneration else {
+                    return
+                }
                 isSending = false
                 streamingTask = nil
                 guard let controller, controller.isViewLoaded, controller.view.window != nil else {
@@ -169,7 +195,7 @@ public func qwengramQwenAssistantController(context: AccountContext) -> ViewCont
                 refresh()
             }
         }
-    })
+    }, stop: stop)
     let signal = combineLatest(queue: .mainQueue(), context.sharedContext.presentationData, updatePromise.get())
     |> map { presentationData, _ -> (ItemListControllerState, (ItemListNodeState, Any)) in
         let listPresentationData = ItemListPresentationData(presentationData)
@@ -187,12 +213,17 @@ public func qwengramQwenAssistantController(context: AccountContext) -> ViewCont
         stableId += 1
         entries.append(.input(stableId, 1, input, !isSending))
         stableId += 1
-        entries.append(.send(stableId, 2, !isSending))
+        if isSending {
+            entries.append(.stop(stableId, 2))
+        } else {
+            entries.append(.send(stableId, 2, true))
+        }
         let controllerState = ItemListControllerState(presentationData: listPresentationData, title: .text("Qwen Assistant"), leftNavigationButton: nil, rightNavigationButton: nil, backNavigationButton: ItemListBackButton(title: presentationData.strings.Common_Back))
         return (controllerState, (ItemListNodeState(presentationData: listPresentationData, entries: entries, style: .blocks, animateChanges: true), arguments))
     }
     let itemListController = ItemListController(context: context, state: signal)
     itemListController.navigationPresentation = .default
+    itemListController.dismissed = stop
     controller = itemListController
     return itemListController
 }
