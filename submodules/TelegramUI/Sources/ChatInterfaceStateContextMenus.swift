@@ -28,6 +28,8 @@ import TelegramUIPreferences
 import NagramSettings
 import NagramStrings
 import TranslateUI
+// MARK: QWENGRAM
+import QwengramSettingsUI
 import DebugSettingsUI
 import ChatPresentationInterfaceState
 import Pasteboard
@@ -1521,6 +1523,16 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                             f(.default)
                         })))
                     }
+                }
+
+                // MARK: QWENGRAM
+                if messages.count == 1, !message.containsSecretMedia, !messageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    actions.append(.action(ContextMenuActionItem(text: "Qwengram AI", icon: { theme in
+                        return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Message"), color: theme.actionSheet.primaryTextColor)
+                    }, action: { _, f in
+                        f(.dismissWithoutContent)
+                        controllerInteraction.navigationController()?.pushViewController(qwengramMessageAIController(context: context, text: messageText))
+                    })))
                 }
                 
                 var showTranslateIfTopical = false

@@ -84,10 +84,10 @@ private enum QwengramQwenAssistantEntry: ItemListNodeEntry {
     }
 }
 
-public func qwengramQwenAssistantController(context: AccountContext) -> ViewController {
+public func qwengramQwenAssistantController(context: AccountContext, initialText: String = "") -> ViewController {
     let updatePromise = ValuePromise<Int32>(0, ignoreRepeated: false)
     var updateValue: Int32 = 0
-    var input = ""
+    var input = initialText
     var messages: [QwengramAIMessage] = []
     var isSending = false
     var streamingTask: QwengramAIStreamingTask?

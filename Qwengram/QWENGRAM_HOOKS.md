@@ -23,3 +23,15 @@
   **Reason:** Links the Qwengram settings UI module.  
   **Module:** `QwengramSettingsUI`  
   **Rebase note:** Preserve the direct Bazel dependency.
+
+- **File:** `submodules/TelegramUI/Sources/ChatInterfaceStateContextMenus.swift`
+  **Section:** `contextMenuForChatPresentationInterfaceState(...)`
+  **Reason:** Adds the Qwengram AI message context-menu entry for a single, non-empty, non-secret text message.
+  **Module:** `QwengramSettingsUI`
+  **Rebase note:** Preserve the local-only handoff to `qwengramMessageAIController(context:text:)`; do not invoke an AI provider from the menu action.
+
+- **File:** `submodules/TelegramUI/BUILD`
+  **Section:** `TelegramUI` dependencies
+  **Reason:** Makes `QwengramSettingsUI` available to the TelegramUI context-menu hook.
+  **Module:** `QwengramSettingsUI`
+  **Rebase note:** Preserve the direct Bazel dependency next to the other fork UI dependencies.

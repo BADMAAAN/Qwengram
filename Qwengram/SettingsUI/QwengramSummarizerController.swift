@@ -76,10 +76,10 @@ private enum QwengramSummarizerEntry: ItemListNodeEntry {
     }
 }
 
-public func qwengramSummarizerController(context: AccountContext) -> ViewController {
+public func qwengramSummarizerController(context: AccountContext, initialText: String = "") -> ViewController {
     let updatePromise = ValuePromise<Int32>(0, ignoreRepeated: false)
     var updateValue: Int32 = 0
-    var input = ""
+    var input = initialText
     var result: String?
     var isSummarizing = false
     weak var controller: ItemListController?

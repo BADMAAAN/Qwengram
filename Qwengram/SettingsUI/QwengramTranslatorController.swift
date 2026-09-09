@@ -90,10 +90,10 @@ private enum QwengramTranslatorEntry: ItemListNodeEntry {
     }
 }
 
-public func qwengramTranslatorController(context: AccountContext) -> ViewController {
+public func qwengramTranslatorController(context: AccountContext, initialText: String = "") -> ViewController {
     let updatePromise = ValuePromise<Int32>(0, ignoreRepeated: false)
     var updateValue: Int32 = 0
-    var input = ""
+    var input = initialText
     var targetLanguage = qwengramTranslatorLanguages[0]
     var result: String?
     var isTranslating = false
