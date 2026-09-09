@@ -79,7 +79,7 @@ private enum QwengramTranslatorEntry: ItemListNodeEntry {
         case let .targetLanguage(_, section, language, enabled):
             return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, title: "Target language", enabled: enabled, label: language, sectionId: section, style: .blocks, disclosureStyle: enabled ? .arrow : .none, action: enabled ? arguments.selectTargetLanguage : {})
         case let .input(_, section, text, enabled):
-            return ItemListMultilineInputItem(presentationData: presentationData, text: text, placeholder: "Paste or type text to translate", maxLength: 0, sectionId: section, textUpdated: enabled ? arguments.updateInput : { _ in })
+            return ItemListMultilineInputItem(presentationData: presentationData, text: text, placeholder: "Paste or type text to translate", maxLength: nil, sectionId: section, style: .blocks, textUpdated: enabled ? arguments.updateInput : { _ in })
         case let .translate(_, section, enabled):
             return ItemListActionItem(presentationData: presentationData, systemStyle: .glass, title: "Translate", kind: .generic, alignment: .natural, sectionId: section, style: .blocks, action: enabled ? arguments.translate : {})
         case let .loading(_, section):

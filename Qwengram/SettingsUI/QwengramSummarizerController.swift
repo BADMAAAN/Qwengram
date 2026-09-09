@@ -65,7 +65,7 @@ private enum QwengramSummarizerEntry: ItemListNodeEntry {
         case let .header(_, section, text):
             return ItemListSectionHeaderItem(presentationData: presentationData, text: text, sectionId: section)
         case let .input(_, section, text, enabled):
-            return ItemListMultilineInputItem(presentationData: presentationData, text: text, placeholder: "Paste or type text to summarize", maxLength: 0, sectionId: section, textUpdated: enabled ? arguments.updateInput : { _ in })
+            return ItemListMultilineInputItem(presentationData: presentationData, text: text, placeholder: "Paste or type text to summarize", maxLength: nil, sectionId: section, style: .blocks, textUpdated: enabled ? arguments.updateInput : { _ in })
         case let .summarize(_, section, enabled):
             return ItemListActionItem(presentationData: presentationData, systemStyle: .glass, title: "Summarize", kind: .generic, alignment: .natural, sectionId: section, style: .blocks, action: enabled ? arguments.summarize : {})
         case let .loading(_, section):

@@ -83,8 +83,7 @@ public final class QwengramQwenProvider: NSObject, QwengramAIProvider, QwengramA
         let delegate = StreamDelegate(onUpdate: onUpdate, completion: completion)
         let streamSession = URLSession(configuration: session.configuration, delegate: delegate, delegateQueue: nil)
         let task = streamSession.dataTask(with: request)
-        delegate.task = task
-        delegate.session = streamSession
+        delegate.setUp(task: task, session: streamSession)
         task.resume()
         return delegate
     }
@@ -114,61 +113,88 @@ public final class QwengramQwenProvider: NSObject, QwengramAIProvider, QwengramA
 private final class StreamDelegate: NSObject, URLSessionDataDelegate, QwengramAIStreamingTask {
     private let onUpdate: (String) -> Void
     private let completion: (Result<Void, QwengramAIError>) -> Void
+    private let stateQueue = DispatchQueue(label: "Qwengram.StreamDelegate")
+    private let stateQueueKey = DispatchSpecificKey<Void>()
     private var pendingData = Data()
     private var eventData: [String] = []
     private var completed = false
-    var task: URLSessionDataTask?
-    var session: URLSession?
+    private var task: URLSessionDataTask?
+    private var session: URLSession?
 
     init(onUpdate: @escaping (String) -> Void, completion: @escaping (Result<Void, QwengramAIError>) -> Void) {
         self.onUpdate = onUpdate
         self.completion = completion
+        super.init()
+        self.stateQueue.setSpecific(key: self.stateQueueKey, value: ())
+    }
+
+    func setUp(task: URLSessionDataTask, session: URLSession) {
+        self.stateQueue.sync {
+            self.task = task
+            self.session = session
+        }
     }
 
     func cancel() {
-        task?.cancel()
-        finish(.failure(.network("Request cancelled")))
+        self.withState {
+            self.finish(.failure(.network("Request cancelled")))
+        }
     }
 
     func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive response: URLResponse, completionHandler: @escaping (URLSession.ResponseDisposition) -> Void) {
-        guard let response = response as? HTTPURLResponse else {
-            completionHandler(.cancel)
-            finish(.failure(.network("Missing HTTP response")))
-            return
+        self.stateQueue.async {
+            guard !self.completed else {
+                completionHandler(.cancel)
+                return
+            }
+            guard let response = response as? HTTPURLResponse else {
+                completionHandler(.cancel)
+                self.finish(.failure(.network("Missing HTTP response")))
+                return
+            }
+            guard (200 ... 299).contains(response.statusCode) else {
+                completionHandler(.cancel)
+                self.finish(.failure(.httpStatus(response.statusCode)))
+                return
+            }
+            completionHandler(.allow)
         }
-        guard (200 ... 299).contains(response.statusCode) else {
-            completionHandler(.cancel)
-            finish(.failure(.httpStatus(response.statusCode)))
-            return
-        }
-        completionHandler(.allow)
     }
 
     func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {
-        pendingData.append(data)
-        while let newline = pendingData.firstIndex(of: 10) {
-            let lineData = pendingData.prefix(upTo: newline)
-            pendingData.removeSubrange(...newline)
-            guard var line = String(data: lineData, encoding: .utf8) else {
-                finish(.failure(.decoding))
-                task?.cancel()
+        self.stateQueue.async {
+            guard !self.completed else {
                 return
             }
-            if line.last == "\r" {
-                line.removeLast()
-            }
-            process(line: line)
-            if completed {
-                return
+            self.pendingData.append(data)
+            while let newline = self.pendingData.firstIndex(of: 10) {
+                let lineData = self.pendingData.prefix(upTo: newline)
+                self.pendingData.removeSubrange(...newline)
+                guard var line = String(data: lineData, encoding: .utf8) else {
+                    self.finish(.failure(.decoding))
+                    return
+                }
+                if line.last == "\r" {
+                    line.removeLast()
+                }
+                self.process(line: line)
+                if self.completed {
+                    return
+                }
             }
         }
     }
 
     func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
-        if let error, !completed {
-            finish(.failure(.network(error.localizedDescription)))
-        } else if !completed {
-            finish(.failure(.streamEndedUnexpectedly))
+        self.stateQueue.async {
+            guard !self.completed else {
+                return
+            }
+            if let error {
+                self.finish(.failure(.network(error.localizedDescription)))
+            } else {
+                self.finish(.failure(.streamEndedUnexpectedly))
+            }
         }
     }
 
@@ -199,7 +225,6 @@ private final class StreamDelegate: NSObject, URLSessionDataDelegate, QwengramAI
             }
         } catch {
             finish(.failure(.decoding))
-            task?.cancel()
         }
     }
 
@@ -208,8 +233,23 @@ private final class StreamDelegate: NSObject, URLSessionDataDelegate, QwengramAI
             return
         }
         completed = true
-        completion(result)
+        let task = self.task
+        let session = self.session
+        self.task = nil
+        self.session = nil
+        self.pendingData.removeAll(keepingCapacity: false)
+        self.eventData.removeAll(keepingCapacity: false)
+        task?.cancel()
         session?.invalidateAndCancel()
+        completion(result)
+    }
+
+    private func withState(_ f: () -> Void) {
+        if DispatchQueue.getSpecific(key: self.stateQueueKey) != nil {
+            f()
+        } else {
+            self.stateQueue.sync(execute: f)
+        }
     }
 
     private struct StreamChunk: Decodable {
