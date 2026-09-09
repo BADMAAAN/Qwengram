@@ -28,7 +28,7 @@ public struct QwengramBotDescriptor {
 public enum QwengramBotCatalog {
     public static let defaultBots: [QwengramBotDescriptor] = [
         QwengramBotDescriptor(id: "qwen-assistant", title: "Qwen Assistant", subtitle: "Ask Qwen", username: nil, category: .ai, isEnabled: true),
-        QwengramBotDescriptor(id: "summarizer", title: "Summarizer", subtitle: "Coming soon", username: nil, category: .ai, isEnabled: false),
+        QwengramBotDescriptor(id: "summarizer", title: "Summarizer", subtitle: "Summarize text", username: nil, category: .ai, isEnabled: true),
         QwengramBotDescriptor(id: "translator", title: "Translator", subtitle: "Coming soon", username: nil, category: .ai, isEnabled: false),
         QwengramBotDescriptor(id: "media-tools", title: "Media Tools", subtitle: "Coming soon", username: nil, category: .media, isEnabled: false),
         QwengramBotDescriptor(id: "qr-tools", title: "QR Tools", subtitle: "Generate QR codes", username: nil, category: .utilities, isEnabled: true),

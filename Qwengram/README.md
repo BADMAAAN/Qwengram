@@ -36,6 +36,9 @@ AI entry and requires a user-supplied Qwen API key. It supports streaming text
 responses; its conversation remains in-memory only. Attachments and persistence
 are not implemented.
 
+Summarizer is functional and uses the configured Qwen provider. Submitted text
+and generated summaries remain in-memory only.
+
 Planned modules:
 - Privacy
 - History
