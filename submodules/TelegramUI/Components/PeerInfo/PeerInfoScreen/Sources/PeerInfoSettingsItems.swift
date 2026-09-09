@@ -22,6 +22,8 @@ enum SettingsSection: Int, CaseIterable {
     case accounts
     case myProfile
     case nagram
+    // MARK: QWENGRAM — standalone settings section after Nagram during development.
+    case qwengram
     case proxy
     case apps
     case shortcuts
@@ -232,6 +234,11 @@ func settingsItems(data: PeerInfoScreenData?, context: AccountContext, presentat
         interaction.openSettings(.nagramDebug)
     }, action: {
         interaction.openSettings(.nagram)
+    }))
+
+    // MARK: QWENGRAM — minimal Qwengram settings entry.
+    items[.qwengram]!.append(PeerInfoScreenDisclosureItem(id: 51, text: "Qwengram", icon: PresentationResourcesSettings.settings, action: {
+        interaction.openSettings(.qwengram)
     }))
 
     let notificationsWarning: Bool

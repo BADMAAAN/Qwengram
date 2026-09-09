@@ -7,6 +7,8 @@ import TelegramCore
 import SettingsUI
 // MARK: NAGRAM — 增强设置页 UI 模块
 import NagramSettingsUI
+// MARK: QWENGRAM — Qwengram settings UI module.
+import QwengramSettingsUI
 import PeerInfoStoryGridScreen
 import CallListUI
 import PassportUI
@@ -155,6 +157,9 @@ extension PeerInfoScreenNode {
             if let controller = self.context.sharedContext.makeDebugSettingsController(context: self.context) {
                 push(controller)
             }
+        // MARK: QWENGRAM — Qwengram settings entry.
+        case .qwengram:
+            push(qwengramSettingsController(context: self.context))
         case .appearance:
             push(themeSettingsController(context: self.context))
         case .language:

@@ -275,6 +275,8 @@ enum PeerInfoSettingsSection {
     case nagram
     // MARK: NAGRAM — Debug fallback when the bottom tab bar is hidden.
     case nagramDebug
+    // MARK: QWENGRAM — Qwengram settings destination.
+    case qwengram
 }
 
 enum PeerInfoReportType {

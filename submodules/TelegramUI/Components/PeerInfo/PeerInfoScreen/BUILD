@@ -99,6 +99,8 @@ swift_library(
         "//submodules/SettingsUI",
         # MARK: NAGRAM — 增强设置页 UI 模块
         "//Nagram/SettingsUI:NagramSettingsUI",
+        # MARK: QWENGRAM — Qwengram settings UI module.
+        "//Qwengram/SettingsUI:QwengramSettingsUI",
         "//Nagram/Settings:NagramSettings",
         "//Nagram/SettingsSignal:NagramSettingsSignal",
         "//Nagram/Strings:NagramStrings",

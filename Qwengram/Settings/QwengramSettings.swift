@@ -1,0 +1,61 @@
+import Foundation
+
+@propertyWrapper
+public struct QwengramDefault {
+    private let key: String
+    private let defaultValue: Bool
+
+    public init(_ key: String, _ defaultValue: Bool) {
+        self.key = key
+        self.defaultValue = defaultValue
+    }
+
+    public var wrappedValue: Bool {
+        get {
+            let defaults = UserDefaults.standard
+            guard defaults.object(forKey: key) != nil else {
+                return defaultValue
+            }
+            return defaults.bool(forKey: key)
+        }
+        nonmutating set {
+            UserDefaults.standard.set(newValue, forKey: key)
+        }
+    }
+}
+
+@propertyWrapper
+public struct QwengramStringDefault {
+    private let key: String
+    private let defaultValue: String
+
+    public init(_ key: String, _ defaultValue: String) {
+        self.key = key
+        self.defaultValue = defaultValue
+    }
+
+    public var wrappedValue: String {
+        get {
+            UserDefaults.standard.string(forKey: key) ?? defaultValue
+        }
+        nonmutating set {
+            UserDefaults.standard.set(newValue, forKey: key)
+        }
+    }
+}
+
+public final class QwengramSettings {
+    public static let shared = QwengramSettings()
+
+    private init() {
+    }
+
+    @QwengramDefault("qwengram.settings.enabled", true)
+    public var qwengramEnabled: Bool
+
+    @QwengramDefault("qwengram.settings.botsHubEnabled", true)
+    public var botsHubEnabled: Bool
+
+    @QwengramStringDefault("qwengram.settings.qwenModel", "qwen-plus")
+    public var qwenModel: String
+}
