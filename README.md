@@ -1,327 +1,324 @@
-# Nagram-iOS
+[English](README.md) | [Русский](README_RU.md)
 
-> 基于 [Telegram-iOS](https://github.com/TelegramMessenger/Telegram-iOS) 官方源码的第三方增强分支，面向中文用户做功能增强与隐私强化。
+# Qwengram
 
-## 项目说明
+**An experimental, open-source, unofficial Telegram client for iOS.**
 
-所有增强改动集中在仓库根的 `Nagram/` 目录(following upstream `SG*` naming convention),需要侵入上游的改动一律加锚注释 `// MARK: NAGRAM`,便于跟随上游同步。设置入口为「我的资料」下方的独立分组「Nagram」。
+Qwengram explores a client with more user control, integrated AI, useful built-in tools, and a cleaner experience for people who want more from Telegram. It uses Telegram infrastructure and protocol through Telegram-iOS; it is not a new messaging network.
 
-## 版权与品牌
+The project combines the Telegram-iOS foundation, the Nagram-iOS enhancement layer, and an independent Qwengram product layer. Privacy controls, message tools, and upstream compatibility guide development, while the current MVP centers on settings, local QR generation, and explicit AI workflows.
 
-- **源码版权:** Nagram-iOS 专属源码与项目素材 Copyright © NextAlone 及 Nagram-iOS 贡献者；上游及第三方组件的版权仍归各自权利人所有，并继续适用各自的许可与版权声明。
-- **应用图标:** Nagram 专属应用图标作品 Copyright © MaitungTM. All rights reserved.
-- **名称与商标:** Nagram 名称、Logo 和项目标识归 [@NextAlone](https://github.com/NextAlone) 所有并管理；源码许可不包含商标授权。
+## Why Qwengram exists
 
-源码许可与品牌资产相互独立。修改版、分支版及第三方发行版须使用不同的名称与图标，不得暗示其为 Nagram 官方版本或已获官方背书。完整政策及所涵盖的 iOS 图标资源见 [`BRANDING.md`](BRANDING.md)。
+Telegram already provides a powerful messaging platform. Qwengram explores how additional privacy controls, AI-assisted workflows, utilities, message actions, and power-user settings can fit into that experience.
 
-## 已实现功能
+The immediate priority is quality: compile, sign, install, and test the existing MVP on a real iPhone, fix the problems found there, and then expand major features.
 
-| 功能 | 说明 |
-|---|---|
-| 增强设置入口 | 设置页「我的资料」下方独立分组,进入 Nagram 设置页 |
-| 强制复制(force-copy) | 在开启内容保护(禁止复制/转发)的对话中仍可复制消息文本,默认关闭 |
-| 自定义图标与应用名 | 默认 Icon Composer (`.icon`) 图标,应用名为 Nagram |
-| NagramSettings 基建 | 增强开关集中存储层 |
+## Architecture
 
-后续波次方向:纯 UI 开关(显示 ID/DC、时间戳显秒、隐藏手机号、贴纸尺寸等)→ 消息交互(上下文菜单逐项开关、双击消息动作)→ 翻译与 LLM/AI 集成 → 正则消息过滤、盘古之白。
-
-## 构建
-
-通过 Bazel 构建,统一用 `build-system/Make/Make.py` 包装脚本;不支持分模块构建,只能整体编译 `Telegram/Telegram` target。命令末尾的 `--continueOnError` 会透传 bazel 的 `--keep_going`,验证大范围改动时让全部错误一次暴露。
-
-当前打包问题、Xcode/Bazel 环境约束和 2026-06-14 rebase 后编译记录见 [`docs/build.md`](docs/build.md)。
-
-**每次 rebase / checkout 上游后先同步 submodule**，否则会出现 `tgcalls` 缺文件、WebRTC/FFmpeg API 不匹配等假错误：
-
-```sh
-git submodule update --init --recursive
-git submodule status --recursive   # 确认没有 + / - / U 前缀
+```text
+Telegram-iOS
+    ↓
+Nagram-iOS enhancement layer
+    ↓
+Qwengram custom layer
 ```
 
-### 先选签名模式
+| Layer | Responsibility |
+| --- | --- |
+| Telegram-iOS | Original upstream application and platform foundation, including Telegram integration. |
+| Nagram-iOS | Enhancement layer from which Qwengram was initially forked. |
+| Qwengram | Independent custom product layer developed in this repository. |
 
-`local.bazelrc` 是本机配置,已 gitignore;仓库根 `.bazelrc` 末尾会 `try-import %workspace%/local.bazelrc`。`bazel clean --expunge` / `Make.py clean` 会删掉它,清理后要按当前模式重建。
+Qwengram-specific code should primarily live under `Qwengram/`. Existing Nagram code remains recognizable as upstream-derived code: mass renaming or rewriting would obscure provenance and make upstream updates harder.
 
-| 模式 | provisioning 状态 | `local.bazelrc` 里是否允许禁用扩展 |
-|---|---|---|
-| 正式/完整签名真机包 | 主 app + 6 个扩展都有 profile | **不允许**写 `build --//Telegram:disableExtensions` |
-| 免费 Apple ID 自签 | 通常只有主 app profile | 可以写 `build --//Telegram:disableExtensions` |
-| 模拟器免签 | 不需要 profile | 可以同时写 `build --//Telegram:disableProvisioningProfiles` 和 `build --//Telegram:disableExtensions` |
+Unavoidable Telegram/Nagram integration points use `// MARK: QWENGRAM` and are recorded in the [upstream hook notes](Qwengram/QWENGRAM_HOOKS.md). The hooks connect settings navigation and message actions to Qwengram controllers.
 
-硬规则:
+## Current feature overview
 
-- 有正式/完整 provisioning 文件时,必须启用扩展;不要禁用 `Share`、`NotificationContent`、`NotificationService`、`Intents`、`Widget`、`BroadcastUpload`。
-- 真机包永远不要写 `build --//Telegram:disableProvisioningProfiles`,否则主 app 签名会走 `None` 分支。
-- `Make.py build` 不接受 `--disableProvisioningProfiles` / `--disableExtensions` 命令行参数;这些 Bazel flag 放进 `local.bazelrc`,或走 direct Bazel。
+**Implemented** means present in the inspected source, not certified for production or proven on a physical iPhone. The overall product remains experimental. **Planned** entries have no working implementation yet.
 
-### 真机(正式/完整 provisioning)
+Locations below are relative to `Qwengram/`.
 
-仓库当前 `build-input/codesigning-development/profiles/` 已有完整 development profiles。用这套 profile 时,`local.bazelrc` 只能放 Xcode/toolchain/warning 相关配置,不能包含任何 `disableExtensions` / `disableProvisioningProfiles`。
+| Feature | Status | Location | What it does |
+| --- | --- | --- | --- |
+| Qwengram Settings | Implemented | `SettingsUI/QwengramSettingsController.swift` | Separate settings page with toggles and tool navigation. |
+| Bots Hub | Implemented | `Bots/`, `SettingsUI/QwengramBotsController.swift` | Categorized launcher for internal tools. |
+| QR Tools | Implemented | `SettingsUI/QwengramQRToolsController.swift` | Generates a QR image locally from text. |
+| Qwen Assistant | Implemented | `SettingsUI/QwengramQwenAssistantController.swift` | Text conversation with Qwen. |
+| Streaming responses | Implemented | `AI/QwengramQwenProvider.swift` | Delivers incremental text to the assistant UI. |
+| Stop Generating | Implemented | Assistant controller and Qwen provider | Cancels the assistant stream and retains received text. |
+| AI Settings | Implemented | `SettingsUI/QwengramAISettingsController.swift` | Saves provider settings and removes the API key. |
+| Secure Qwen API key storage | Implemented | `AI/QwengramAIKeychain.swift` | Stores the user-supplied key in iOS Keychain. |
+| Configurable Qwen model | Implemented | `Settings/QwengramSettings.swift` | Stores a model identifier; default: `qwen-plus`. |
+| Summarizer | Implemented | `SettingsUI/QwengramSummarizerController.swift` | Summarizes explicitly submitted text. |
+| Translator | Implemented | `SettingsUI/QwengramTranslatorController.swift` | Translates text into one of eight target languages. |
+| Telegram message → Qwengram AI | Implemented | Documented TelegramUI hook; `SettingsUI/QwengramMessageAIController.swift` | Opens a local review screen with selected text. |
+| Ask Qwen | Implemented | Message AI and assistant controllers | Prefills the assistant input; sending remains explicit. |
+| Summarize message | Implemented | Message AI and summarizer controllers | Prefills the summarizer without starting a request. |
+| Translate message | Implemented | Message AI and translator controllers | Prefills the translator without starting a request. |
+| Ghost Mode, Message History, Media Archive | Planned | Disabled settings placeholders | Reserve space for future functionality. |
 
-完整签名至少需要这些 provisioning 目标:
+## Qwengram Settings
 
-- `Telegram`
-- `Share`
-- `NotificationContent`
-- `NotificationService`
-- `Intents`
-- `Widget`
-- `BroadcastUpload`
+A separate Qwengram entry in the app's Settings opens the custom settings page. It currently exposes:
 
-编译:
+| Setting | Default | Current behavior |
+| --- | --- | --- |
+| `qwengramEnabled` | `true` | Stores the “Qwengram Enabled” preference. It is not currently a universal gate for every Qwengram entry point. |
+| `botsHubEnabled` | `true` | Controls whether “Open Bots Hub” is enabled on this settings page. |
+| `qwenModel` | `qwen-plus` | Stores the model identifier edited through AI settings. |
 
-```sh
-source ~/.zshrc 2>/dev/null
-python3 build-system/Make/Make.py --overrideXcodeVersion \
-  --cacheDir ~/telegram-bazel-cache \
-  build \
-  --configurationPath build-input/local-configuration.json \
-  --codesigningInformationPath build-input/codesigning-development \
-  --buildNumber=1 \
-  --configuration=debug_arm64 --continueOnError
+These preferences use local `UserDefaults.standard`. The `SettingsSignal/` layer emits initial toggle values and observes `UserDefaults.didChangeNotification`, filtering repeated values so the settings UI updates without polling.
+
+The AI section opens **Qwen Provider**. **Ghost Mode**, **Message History**, and **Media Archive** are disabled “Coming soon” placeholders. Global gating behavior may evolve as development continues; the toggles should not be treated as a comprehensive privacy switch.
+
+## Bots Hub
+
+Bots Hub is currently Qwengram's internal tool and assistant launcher, not a generic remote bot execution framework.
+
+| Category | Current entries |
+| --- | --- |
+| AI | Qwen Assistant, Summarizer, Translator — functional. |
+| Media | Media Tools — disabled placeholder. |
+| Utilities | QR Tools — functional; Reminders — disabled placeholder. |
+| Custom | Shown as “My Bots”; Add Bot is a disabled placeholder. |
+
+The catalog holds descriptors such as title, category, and enabled state. Enabled entries route to local Qwengram controllers. Remote bot execution and user-added bots are not implemented.
+
+## QR Tools
+
+Open **Qwengram Settings → Open Bots Hub → QR Tools**, enter text, and tap **Generate QR**. The generated image appears on the same screen. Empty input and generation failures produce an error message.
+
+Generation uses CoreImage's `CIQRCodeGenerator` with UTF-8 text and happens entirely on the device. It requires no network request. The current tool generates and displays QR codes; it does not add a scanner or a dedicated export workflow.
+
+## Qwen AI integration
+
+The AI layer separates message types, errors, provider interfaces, Keychain access, and the Qwen implementation:
+
+- `QwengramAIMessage` represents system, user, and assistant messages.
+- `QwengramAIProvider` exposes non-streaming `generateText`.
+- `QwengramAIStreamingProvider` exposes `streamText`, with a cancellable `QwengramAIStreamingTask`.
+- `QwengramQwenProvider` implements both interfaces using `URLSession`.
+
+The current implementation targets Alibaba Cloud Model Studio / DashScope's OpenAI-compatible chat-completions API. Its source-defined default endpoint is:
+
+```text
+https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions
 ```
 
-产物为 `bazel-bin/Telegram/Telegram.ipa`。安装到真机:
+The default model is **`qwen-plus`**. **Qwengram Settings → AI → Qwen Provider** lets the user enter another model identifier. The endpoint can be supplied when constructing the provider in code; the current settings UI does not expose an endpoint editor or provider picker.
 
-```sh
-xcrun devicectl list devices
-unzip -o bazel-bin/Telegram/Telegram.ipa -d /tmp/tg-device
-xcrun devicectl device install app --device <DEVICE_UDID> /tmp/tg-device/Payload/Telegram.app
+Requests use JSON messages and Bearer authentication. Qwen Assistant uses streaming; Summarizer and Translator use non-streaming requests. The provider interfaces support separation of concerns, but multiple selectable AI providers are not currently implemented.
+
+## API key security
+
+The Qwen API key is supplied by the user and stored through iOS Keychain, not embedded in source or saved in ordinary UserDefaults. The Keychain item uses `kSecAttrAccessibleWhenUnlockedThisDeviceOnly`. The inspected Qwengram AI paths do not intentionally log the key.
+
+The settings screen provides a password-style input, **Save**, configuration status, and **Remove API Key**. A blank key field can leave the existing key unchanged when saving a model. “Configured” indicates a stored key; it is not a successful provider connectivity test.
+
+| Credential | Purpose |
+| --- | --- |
+| Telegram API ID / API hash | Build and Telegram application/authentication configuration. The test workflow reads repository secrets. |
+| Qwen API key | Optional AI requests made by Qwengram at runtime. The user supplies it in the app. |
+
+These credentials are separate. Do not put actual credential values in source, public documentation, or issue reports.
+
+## Qwen Assistant
+
+1. Open **Qwen Assistant** from Bots Hub, or **Ask Qwen** from a message's local AI review screen.
+2. Write or edit the input and press **Send**.
+3. The controller validates non-empty input, the stored key, and the configured model.
+4. It sends the current in-memory conversation, including previous user and assistant messages, to Qwen.
+5. Incoming text progressively updates the assistant response.
+6. **Stop Generating** cancels the active stream. Text already received remains in the conversation; an empty assistant placeholder is removed.
+
+The dismissal handler also stops an active generation. Network, HTTP, decoding, and empty-response failures are surfaced to the user.
+
+This is a temporary text conversation, not permanent chat storage. There are no attachments or persisted conversation history. The controller does not implement automatic conversation truncation, so provider limits can affect longer sessions.
+
+## Summarizer
+
+Open **Summarizer**, paste or type text, review it, and press **Summarize**. Opening it from a message prefills the same input field.
+
+It reuses the configured Qwen model and Keychain key, sending the supplied text with a summarization instruction. It does not scan chats automatically. The result appears after the non-streaming request finishes.
+
+Input and result stay in controller memory. Starting another summary clears the previous result; there is no persisted summary history or Stop Generating control on this screen.
+
+## Translator
+
+Open **Translator**, provide or review the text, select a target language, and press **Translate**. The source-language row is fixed to **Auto Detect**: the model infers the source language from the submitted text, with no separate local detection step.
+
+The current target list is **English, Russian, Chinese, Spanish, German, French, Japanese, and Korean**. English is initially selected.
+
+Translation uses the existing Qwen provider, model, and Keychain key. Input and result remain in memory, and a new request clears the previous result. This screen uses non-streaming generation and has no Stop Generating control.
+
+## Telegram message integration
+
+```text
+Long-press an eligible normal text message
+    ↓
+Qwengram AI
+    ↓
+Local review/action screen
+    ↓
+Ask Qwen / Summarize / Translate
+    ↓
+Review or edit the prefilled tool input
+    ↓
+Explicitly press Send / Summarize / Translate
 ```
 
-### 真机(免费 Apple ID 自签)
+The hook checks for a single message, non-whitespace text, and no secret media; its surrounding branch excludes expired content. The checked-in hook does not explicitly exclude all secret-chat text, so a blanket “never available in secret chats” guarantee would be inaccurate.
 
-> 免费账号通常没有扩展 App ID / provisioning,所以这个模式才允许禁用扩展。免费证书 **7 天**到期,过期重跑 provisioning 生成步骤即可。
+**Opening the Qwengram AI menu sends no message content to the AI provider.** Selecting a tool also only opens a prefilled controller. A request starts only after the user presses the tool's execution button.
 
-**1. 写 `build-input/local-configuration.json`**(`build-input/*` 已 gitignore,字段同官方 `build-system/template_minimal_development_configuration.json`):
+This deliberate boundary separates local inspection from external AI processing. The review screen passes text into the tool; it does not automatically upload a whole conversation.
 
-```json
-{
-  "bundle_id": "com.example.nagram",
-  "api_id": "<your_api_id>",
-  "api_hash": "<your_api_hash>",
-  "team_id": "<证书 OU 字段>",
-  "app_center_id": "0",
-  "is_internal_build": "true",
-  "is_appstore_build": "false",
-  "appstore_id": "0",
-  "app_specific_url_scheme": "tg",
-  "premium_iap_product_id": "",
-  "enable_siri": false,
-  "enable_icloud": false
-}
+## Streaming and cancellation
+
+The Qwen provider requests Server-Sent Events (SSE). It buffers incoming bytes, assembles `data:` events, decodes incremental `delta.content`, and treats `[DONE]` as successful stream completion. A connection that ends without that marker is reported as an unexpected end.
+
+A serial state queue coordinates parsing, cancellation, and completion. A completion guard prevents terminal callbacks from being delivered more than once. Finishing clears buffers, cancels the task, and invalidates the stream session.
+
+The assistant controller tracks a generation identifier. Stopping advances that identifier, so callbacks from an older generation cannot change the current conversation. UI updates run on the main queue and check controller visibility. These safeguards are implemented in source; real-device validation remains part of the MVP work.
+
+## Privacy model
+
+| Operation or data | Current boundary |
+| --- | --- |
+| Open message AI menu or choose a tool | Local review/navigation; no AI request. |
+| Execute an AI action | Submitted text and relevant assistant conversation context go to Qwen. |
+| Qwen API key | Persisted in iOS Keychain and used to authenticate provider requests. |
+| AI input, conversations, and results | Kept in memory by the current controllers; no persistent AI history. |
+| QR generation | Local CoreImage processing; no network dependency. |
+| Upstream integration | Small documented hooks into Qwengram controllers. |
+
+These statements describe the inspected Qwengram features, not a claim that the entire Telegram client is offline or “completely private.” Telegram continues to communicate with its infrastructure, and optional AI functions communicate with Qwen. Local in-memory handling does not establish the external provider's retention policy or guarantee immediate memory erasure.
+
+## Media and ephemeral content
+
+Ordinary media, cache, and archive management are roadmap areas. **Media Tools** and **Media Archive** are currently placeholders, not working archive features.
+
+Planned media work concerns ordinary media handling. Bypassing sender-selected view-once, self-destruct, or ephemeral-media protections is not a Qwengram feature advertised here.
+
+## Current iPhone development workflow
+
+```text
+Windows development
+    ↓
+Git push
+    ↓
+GitHub repository
+    ↓
+GitHub Actions macOS runner
+    ↓
+Xcode + Bazel
+    ↓
+ARM64 iPhone IPA
+    ↓
+Download to Windows
+    ↓
+Personal signing / sideloading
+    ↓
+Physical iPhone testing
 ```
 
-- `api_id` / `api_hash`:到 https://my.telegram.org/apps 申请自己的。
-- `team_id`:不是证书名括号里的序列号,而是证书 subject 的 `OU` 字段。查:
-  ```sh
-  security find-certificate -c "Apple Development" -p | openssl x509 -noout -subject
-  ```
-  取其中 `OU=` 的值。
-- `bundle_id`:用非官方 id(官方 id 仅 `ph.telegra.Telegraph` 等)。免费账号会自动把 entitlements 精简到仅剩 app-groups。
+Normal local coding can happen on Windows without owning a Mac. The GitHub-hosted macOS runner supplies Apple's iOS/Xcode toolchain for compilation. Signing and installation remain separate steps.
 
-**2. 生成 provisioning**(免费账号只能由 Xcode 自动生成):Xcode 新建空项目,让 **Bundle Identifier 精确等于上面的 `bundle_id`**(Xcode 中 Bundle ID = Organization Identifier + Product Name),Team 选 Personal Team,run 到真机一次(顺带完成设备信任)。
+The manually triggered [Qwengram iPhone Test Build workflow](.github/workflows/qwengram-ios-test.yml) checks out `qwengram/main`. On success it publishes **Qwengram-iPhone-test**, containing `Telegram.ipa`. The workflow also defines a build-failure log artifact.
 
-**3. 把 provisioning 拷到 bazel 查找的路径**(Xcode 16+ 放在 UserData 下,bazel `local_provisioning_profile` 找传统路径):
+See the [iPhone test build guide](Qwengram/IOS_TEST_BUILD.md) for setup and required repository secret names. An unsigned IPA is not directly installable, and artifact creation alone does not prove successful signing, installation, or runtime behavior.
 
-```sh
-cp ~/Library/Developer/Xcode/UserData/Provisioning\ Profiles/*.mobileprovision \
-   ~/Library/MobileDevice/Provisioning\ Profiles/
+## Build configuration
+
+| Item | Current test pipeline |
+| --- | --- |
+| Target | Physical iPhone ARM64, `debug_arm64`; app target `Telegram/Telegram`. |
+| Build tooling | Bazel through `build-system/Make/Make.py`. |
+| Runner | `macos-26`, with Xcode selected and checked against `versions.json`. |
+| Test bundle identifier | `com.badmaaan.qwengram`. |
+| Output | Unsigned `Telegram.ipa`. |
+| Extensions and provisioning | Both disabled by this existing unsigned CI workflow. |
+| Apple signing material | No Apple certificates, profiles, Apple IDs, or passwords imported by the workflow. |
+
+This table describes the existing test pipeline; its unsigned configuration is not a recipe for a fully signed device build. Personal installation needs a suitable signing/provisioning process. The workflow does not establish a minimum supported iOS version, so this page makes no minimum-version claim.
+
+## Current development status
+
+Qwengram is under active development. The order of work is:
+
+1. **First:** get the existing MVP compiled, signed, installed, and tested on a real iPhone.
+2. **Then:** fix real-device bugs and stabilize the current tools.
+3. **After that:** expand major privacy, history, and media features.
+
+Source implementation and workflow definitions are not evidence of a completed real-device validation cycle.
+
+## Roadmap
+
+These are planned directions, not delivery promises or claims of available functionality.
+
+| Area | Planned work |
+| --- | --- |
+| Privacy | Ghost Mode; additional privacy and user-control options. |
+| Messages | Edited-message history; deleted-message history where technically and legally appropriate; richer context actions. |
+| Media | Improved ordinary media, cache, and archive management. |
+| Bots | Additional utilities; a richer Bots Hub; custom bot/tool support. |
+| AI | Improved Telegram context integration; provider/model improvements; richer assistant workflows. |
+| Product | Complete Qwengram branding and an independent icon; Settings/UI polish; improved build, signing, and installation workflow. |
+
+## Repository structure
+
+```text
+Qwengram/
+├── AI/
+├── Bots/
+├── Core/
+├── Settings/
+├── SettingsSignal/
+├── SettingsUI/
+├── README.md
+├── QWENGRAM_HOOKS.md
+└── IOS_TEST_BUILD.md
 ```
 
-**4. 免费自签的 `local.bazelrc` 只留扩展禁用项**(不能含 `disableProvisioningProfiles`,否则主 app 签名 select 走 None 分支失败):
+| Path | Responsibility |
+| --- | --- |
+| `Qwengram/AI/` | Provider interfaces, messages, errors, Qwen networking, and Keychain access. |
+| `Qwengram/Bots/` | Tool categories, descriptors, and the built-in catalog. |
+| `Qwengram/Core/` | Product identity constant, including the Qwengram display name. |
+| `Qwengram/Settings/` | UserDefaults-backed toggles and model preference. |
+| `Qwengram/SettingsSignal/` | Reactive updates for the two boolean settings. |
+| `Qwengram/SettingsUI/` | Settings, launcher, QR, AI, and message-review controllers. |
+| `Nagram/` | Preserved Nagram enhancement layer. |
+| `Telegram/`, `submodules/` | App targets and upstream libraries. |
+| `build-system/` | Existing build tooling. |
 
-```
-build --//Telegram:disableExtensions
-```
+The [module overview](Qwengram/README.md), [hook notes](Qwengram/QWENGRAM_HOOKS.md), and [test build guide](Qwengram/IOS_TEST_BUILD.md) provide focused development references.
 
-**5. 编译并安装**:
+## Development philosophy
 
-```sh
-source ~/.zshrc 2>/dev/null
-python3 build-system/Make/Make.py --overrideXcodeVersion \
-  --cacheDir ~/telegram-bazel-cache \
-  build \
-  --configurationPath build-input/local-configuration.json \
-  --xcodeManagedCodesigning --buildNumber=1 \
-  --configuration=debug_arm64 --continueOnError
-```
+Keep Qwengram isolated where possible, minimize invasive upstream changes, and document unavoidable hooks. Preserve the ability to update or rebase against upstream without hiding where inherited code came from.
 
-如果当前 `Make.py` debug wrapper 把 Swift `-j <n>` 当成输入文件,先确认它已经生成过 `build-input/configuration-repository/variables.bzl`,再走 direct Bazel:
+Contributions should be focused, distinguish implemented behavior from placeholders, and audit privacy-sensitive paths such as the transition from local review to network requests. Validate the current MVP before aggressively expanding scope, and keep the English and Russian documentation aligned.
 
-```sh
-source ~/.zshrc 2>/dev/null
-build-input/bazel-8.4.2-darwin-arm64 build Telegram/Telegram \
-  --keep_going \
-  --announce_rc \
-  --features=swift.use_global_module_cache \
-  --verbose_failures \
-  --remote_cache_async \
-  --define=buildNumber=1 \
-  --disk_cache="$HOME/telegram-bazel-cache" \
-  -c dbg \
-  --ios_multi_cpus=arm64 \
-  --watchos_cpus=arm64_32
-```
+## Upstream projects and credits
 
-产物为 `bazel-bin/Telegram/Telegram.ipa`。安装到真机:
+- [Telegram-iOS](https://github.com/TelegramMessenger/Telegram-iOS) provides the original client foundation.
+- **Nagram-iOS**, NextAlone, and its contributors provide the inherited enhancement layer. The related Android project is [Nagram](https://github.com/NextAlone/Nagram).
+- **Qwen / Alibaba Cloud Model Studio** provides the external AI service targeted by the current Qwen implementation.
+- **Qwengram contributors** develop this repository's custom layer and tools.
 
-```sh
-xcrun devicectl list devices        # 查设备 UDID
-unzip -o bazel-bin/Telegram/Telegram.ipa -d /tmp/tg-device
-xcrun devicectl device install app --device <DEVICE_UDID> /tmp/tg-device/Payload/Telegram.app
-```
+The [archived original Nagram README](docs/UPSTREAM_NAGRAM_README.md) preserves the complete README inherited from the Nagram fork, including copyright/trademark notices, build notes, and the upstream Telegram compilation guide. It was recovered unchanged from the repository's committed README before this restructuring.
 
-首次启动需在 iPhone「设置 → 通用 → VPN 与设备管理」中信任开发者证书。
+The archive is a historical document. Its relative paths still assume the repository root and are intentionally unchanged; for its local references, use [BRANDING.md](BRANDING.md) and [docs/build.md](docs/build.md) from the root.
 
-### 模拟器(免签,验证最快)
+## Licensing, trademarks, and independence
 
-模拟器免签名 + 免扩展时,`local.bazelrc` 可以临时写:
+Upstream code and third-party components retain their respective licenses and copyrights. This documentation does not introduce a new license or claim ownership of inherited code.
 
-```
-build --//Telegram:disableProvisioningProfiles
-build --//Telegram:disableExtensions
-```
+Nagram-iOS-specific source and materials retain attribution to NextAlone and Nagram-iOS contributors. Nagram icon artwork is copyright MaitungTM, all rights reserved. Nagram names and assets, Telegram names and trademarks, and Qwen/Alibaba names remain with their respective owners. See the existing [branding policy](BRANDING.md) and archived notices.
 
-编译:
+Qwengram uses its own project identity. Completing the application's independent branding and icon remains roadmap work. Source licenses do not grant trademark rights, and Qwengram distributions must not imply official Telegram or Nagram affiliation.
 
-```sh
-python3 build-system/Make/Make.py --overrideXcodeVersion \
-  --cacheDir ~/telegram-bazel-cache \
-  build \
-  --configurationPath build-system/appstore-configuration.json \
-  --xcodeManagedCodesigning --buildNumber=1 \
-  --configuration=debug_sim_arm64 --continueOnError
-```
-
-产物为 `bazel-bin/Telegram/Telegram.ipa`(bundle id `ph.telegra.Telegraph`)。安装到已启动的模拟器:
-
-```sh
-unzip -o bazel-bin/Telegram/Telegram.ipa -d /tmp/tg-sim
-# 装过旧版务必先卸载,否则旧 Frameworks dylib 不会被替换
-xcrun simctl uninstall booted ph.telegra.Telegraph
-xcrun simctl install booted /tmp/tg-sim/Payload/Telegram.app
-```
-
----
-
-以上为 Nagram-iOS 增强与构建说明。以下为上游 Telegram-iOS 的通用编译指南(原文保留):
-
-# Telegram iOS Source Code Compilation Guide
-
-We welcome all developers to use our API and source code to create applications on our platform.
-There are several things we require from **all developers** for the moment.
-
-# Creating your Telegram Application
-
-1. [**Obtain your own api_id**](https://core.telegram.org/api/obtaining_api_id) for your application.
-2. Please **do not** use the name Telegram for your app — or make sure your users understand that it is unofficial.
-3. Kindly **do not** use our standard logo (white paper plane in a blue circle) as your app's logo.
-3. Please study our [**security guidelines**](https://core.telegram.org/mtproto/security_guidelines) and take good care of your users' data and privacy.
-4. Please remember to publish **your** code too in order to comply with the licences.
-
-# Quick Compilation Guide
-
-## Get the Code
-
-```
-git clone --recursive -j8 https://github.com/TelegramMessenger/Telegram-iOS.git
-```
-
-## Setup Xcode
-
-Install Xcode (directly from https://developer.apple.com/download/applications or using the App Store).
-
-## Adjust Configuration
-
-1. Generate a random identifier:
-```
-openssl rand -hex 8
-```
-2. Create a new Xcode project. Use `Telegram` as the Product Name. Use `org.{identifier from step 1}` as the Organization Identifier.
-3. Open `Keychain Access` and navigate to `Certificates`. Locate `Apple Development: your@email.address (XXXXXXXXXX)` and double tap the certificate. Under `Details`, locate `Organizational Unit`. This is the Team ID.
-4. Edit `build-system/template_minimal_development_configuration.json`. Use data from the previous steps.
-
-## Generate an Xcode project
-
-```
-python3 build-system/Make/Make.py \
-    --cacheDir="$HOME/telegram-bazel-cache" \
-    generateProject \
-    --configurationPath=build-system/template_minimal_development_configuration.json \
-    --xcodeManagedCodesigning
-```
-
-# Advanced Compilation Guide
-
-## Xcode
-
-1. Copy and edit `build-system/appstore-configuration.json`.
-2. Copy `build-system/fake-codesigning`. Create and download provisioning profiles, using the `profiles` folder as a reference for the entitlements.
-3. Generate an Xcode project:
-```
-python3 build-system/Make/Make.py \
-    --cacheDir="$HOME/telegram-bazel-cache" \
-    generateProject \
-    --configurationPath=configuration_from_step_1.json \
-    --codesigningInformationPath=directory_from_step_2
-```
-
-## IPA
-
-1. Repeat the steps from the previous section. Use distribution provisioning profiles.
-2. Run:
-```
-python3 build-system/Make/Make.py \
-    --cacheDir="$HOME/telegram-bazel-cache" \
-    build \
-    --configurationPath=...see previous section... \
-    --codesigningInformationPath=...see previous section... \
-    --buildNumber=100001 \
-    --configuration=release_arm64
-```
-
-# FAQ
-
-## Xcode is stuck at "build-request.json not updated yet"
-
-Occasionally, you might observe the following message in your build log:
-```
-"/Users/xxx/Library/Developer/Xcode/DerivedData/Telegram-xxx/Build/Intermediates.noindex/XCBuildData/xxx.xcbuilddata/build-request.json" not updated yet, waiting...
-```
-
-Should this occur, simply cancel the ongoing build and initiate a new one.
-
-## Telegram_xcodeproj: no such package 
-
-Following a system restart, the auto-generated Xcode project might encounter a build failure accompanied by this error:
-```
-ERROR: Skipping '@rules_xcodeproj_generated//generator/Telegram/Telegram_xcodeproj:Telegram_xcodeproj': no such package '@rules_xcodeproj_generated//generator/Telegram/Telegram_xcodeproj': BUILD file not found in directory 'generator/Telegram/Telegram_xcodeproj' of external repository @rules_xcodeproj_generated. Add a BUILD file to a directory to mark it as a package.
-```
-
-If you encounter this issue, re-run the project generation steps in the README.
-
-
-# Tips
-
-## Codesigning is not required for simulator-only builds
-
-Nagram note: this upstream tip only applies to generating a simulator-only Xcode project. For current Nagram `Make.py build`, put `build --//Telegram:disableProvisioningProfiles` in `local.bazelrc`. Do not use it for device builds or when full provisioning profiles are present.
-
-Upstream example:
-```
-python3 build-system/Make/Make.py \
-    --cacheDir="$HOME/telegram-bazel-cache" \
-    generateProject \
-    --configurationPath=path-to-configuration.json \
-    --codesigningInformationPath=path-to-provisioning-data \
-    --disableProvisioningProfiles
-```
-
-## Versions
-
-Each release is built using a specific Xcode version (see `versions.json`). The helper script checks the versions of the installed software and reports an error if they don't match the ones specified in `versions.json`. It is possible to bypass these checks:
-
-```
-python3 build-system/Make/Make.py --overrideXcodeVersion build ... # Don't check the version of Xcode
-```
+**Qwengram is unofficial and independent. It is not affiliated with, endorsed by, or an official product of Telegram, Nagram, Alibaba, or Qwen.**
