@@ -14,8 +14,6 @@ jobs:
     env:
       BUNDLE_ID: com.badmaaan.qwengram
       BUILD_NUMBER: "1"
-      BAZEL_CACHE: ${{ runner.temp }}/qwengram-bazel-cache
-      ARTIFACTS_DIR: ${{ runner.temp }}/qwengram-ios-artifacts
 
     steps:
       - name: Check out qwengram/main and submodules
@@ -24,6 +22,12 @@ jobs:
           ref: qwengram/main
           submodules: recursive
           fetch-depth: 1
+
+      - name: Set temporary build paths
+        shell: bash
+        run: |
+          echo "BAZEL_CACHE=$RUNNER_TEMP/qwengram-bazel-cache" >> "$GITHUB_ENV"
+          echo "ARTIFACTS_DIR=$RUNNER_TEMP/qwengram-ios-artifacts" >> "$GITHUB_ENV"
 
       - name: Select and verify the repository-pinned Xcode
         shell: bash
