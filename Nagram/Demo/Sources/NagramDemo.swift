@@ -134,14 +134,38 @@ private func seedNagramDemo(transaction: Transaction) {
     for (chatIndex, chat) in chats.enumerated() {
         let (peer, texts, unreadCount) = chat
         let firstId = Int32(chatIndex * 100 + 1)
-        let messages = texts.enumerated().map { index, item -> StoreMessage in
-            return StoreMessage(
-                id: MessageId(peerId: peer.id, namespace: Namespaces.Message.Cloud, id: firstId + Int32(index)),
-                customStableId: nil, globallyUniqueId: nil, groupingKey: nil, threadId: nil,
-                timestamp: timestamp - Int32(chatIndex * 900 + (texts.count - index - 1) * 60),
-                flags: item.0 == me.id ? [] : [.Incoming], tags: [], globalTags: [], localTags: [],
-                forwardInfo: nil, authorId: item.0, text: item.1, attributes: [], media: []
+        // MARK: QWENGRAM - Xcode 26 Swift type-checker compatibility.
+        var messages: [StoreMessage] = []
+        messages.reserveCapacity(texts.count)
+
+        for (index, item) in texts.enumerated() {
+            let messageId = MessageId(
+                peerId: peer.id,
+                namespace: Namespaces.Message.Cloud,
+                id: firstId + Int32(index)
             )
+            let timestampOffset = chatIndex * 900 + (texts.count - index - 1) * 60
+            let messageTimestamp = timestamp - Int32(timestampOffset)
+            let messageFlags: StoreMessageFlags = item.0 == me.id ? [] : [.Incoming]
+
+            let message = StoreMessage(
+                id: messageId,
+                customStableId: nil,
+                globallyUniqueId: nil,
+                groupingKey: nil,
+                threadId: nil,
+                timestamp: messageTimestamp,
+                flags: messageFlags,
+                tags: [],
+                globalTags: [],
+                localTags: [],
+                forwardInfo: nil,
+                authorId: item.0,
+                text: item.1,
+                attributes: [],
+                media: []
+            )
+            messages.append(message)
         }
         let _ = transaction.addMessages(messages, location: .Random)
         transaction.updatePeerChatListInclusion(peer.id, inclusion: .ifHasMessagesOrOneOf(

@@ -35,3 +35,9 @@
   **Reason:** Makes `QwengramSettingsUI` available to the TelegramUI context-menu hook.
   **Module:** `QwengramSettingsUI`
   **Rebase note:** Preserve the direct Bazel dependency next to the other fork UI dependencies.
+
+- **File:** `Nagram/Demo/Sources/NagramDemo.swift`
+  **Section:** Demo message seeding
+  **Reason:** Splits a large `StoreMessage` map expression into smaller typed expressions so Xcode 26.2 can type-check it during the ARM64 build.
+  **Module:** `NagramDemo`
+  **Rebase note:** Compatibility-only refactor; preserve behavior and re-test whether the workaround is still required after upstream changes.
