@@ -163,7 +163,7 @@ private final class QwengramQRImageItemNode: ListViewItemNode {
     private let imageNode = ASImageNode()
     private let backgroundNode = ASDisplayNode()
 
-    override init() {
+    init() {
         super.init(layerBacked: false)
         self.addSubnode(self.backgroundNode)
         self.addSubnode(self.imageNode)

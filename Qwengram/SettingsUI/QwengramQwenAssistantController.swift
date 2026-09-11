@@ -2,6 +2,7 @@ import AccountContext
 import Display
 import Foundation
 import ItemListUI
+import PresentationDataUtils
 import QwengramAI
 import QwengramSettings
 import SwiftSignalKit
@@ -194,7 +195,7 @@ public func qwengramQwenAssistantController(context: AccountContext, initialText
                 }
                 refresh()
             }
-        }
+        })
     }, stop: stop)
     let signal = combineLatest(queue: .mainQueue(), context.sharedContext.presentationData, updatePromise.get())
     |> map { presentationData, _ -> (ItemListControllerState, (ItemListNodeState, Any)) in
@@ -223,7 +224,9 @@ public func qwengramQwenAssistantController(context: AccountContext, initialText
     }
     let itemListController = ItemListController(context: context, state: signal)
     itemListController.navigationPresentation = .default
-    itemListController.dismissed = stop
+    itemListController.didDisappear = { _ in
+        stop()
+    }
     controller = itemListController
     return itemListController
 }

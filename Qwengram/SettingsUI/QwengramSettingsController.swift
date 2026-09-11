@@ -2,6 +2,7 @@ import AccountContext
 import Display
 import Foundation
 import ItemListUI
+import PresentationDataUtils
 import QwengramSettings
 import QwengramSettingsSignal
 import SwiftSignalKit
@@ -57,7 +58,7 @@ private enum QwengramSettingsEntry: ItemListNodeEntry {
         case let .toggle(_, section, title, value, updated):
             return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: title, value: value, sectionId: section, style: .blocks, updated: updated)
         case let .navigation(_, section, title, enabled, action):
-            return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, title: title, enabled: enabled, sectionId: section, style: .blocks, action: action)
+            return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, title: title, enabled: enabled, label: "", sectionId: section, style: .blocks, action: action)
         case let .placeholder(_, section, title, label):
             return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, title: title, enabled: false, label: label, sectionId: section, style: .blocks, disclosureStyle: .none, action: nil)
         case let .about(_, section, text):

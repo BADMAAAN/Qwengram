@@ -1,6 +1,7 @@
 import AccountContext
 import Display
 import ItemListUI
+import PresentationDataUtils
 import SwiftSignalKit
 import TelegramPresentationData
 
@@ -51,7 +52,7 @@ private enum QwengramMessageAIEntry: ItemListNodeEntry {
         case let .selectedText(_, section, text), let .privacy(_, section, text):
             return ItemListTextItem(presentationData: presentationData, text: .plain(text), sectionId: section)
         case let .action(_, section, title, action):
-            return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, title: title, sectionId: section, style: .blocks, action: action)
+            return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, title: title, label: "", sectionId: section, style: .blocks, action: action)
         }
     }
 }
