@@ -265,7 +265,9 @@ public let telegramPostboxSeedConfiguration: SeedConfiguration = {
             
             return result
         },
-        displaySavedMessagesAsTopicListPreferencesKey: PreferencesKeys.displaySavedChatsAsTopics()
+        displaySavedMessagesAsTopicListPreferencesKey: PreferencesKeys.displaySavedChatsAsTopics(),
+        // MARK: NAGRAM
+        beforeMessageUpdate: qwengramBeforeMessageUpdate
     )
 }()
 

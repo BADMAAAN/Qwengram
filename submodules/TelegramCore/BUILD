@@ -5,11 +5,16 @@ swift_library(
     module_name = "TelegramCore",
     srcs = glob([
         "Sources/**/*.swift",
-    ]),
+    ]) + [
+        # // MARK: NAGRAM
+        "//Qwengram/HistoryIntegration:Sources",
+    ],
     copts = [
         "-warnings-as-errors",
     ],
     deps = [
+        # // MARK: NAGRAM
+        "//Qwengram/HistoryStorage:QwengramHistoryStorage",
         "//submodules/TelegramApi:TelegramApi",
         "//submodules/MtProtoKit:MtProtoKit",
         "//submodules/SSignalKit/SwiftSignalKit:SwiftSignalKit",

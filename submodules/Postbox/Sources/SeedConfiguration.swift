@@ -55,7 +55,16 @@ func resolveChatListMessageTagSummaryResultCalculation(postbox: PostboxImpl, pee
     return count > 0
 }
 
+// MARK: NAGRAM
+public enum MessageUpdateSource: String {
+    case addMessages
+    case updateMessage
+}
+
 public final class SeedConfiguration {
+    // MARK: NAGRAM
+    // Synchronous, non-throwing, transaction-scoped. Must not re-enter message writes.
+    public let beforeMessageUpdate: ((Transaction, Message, StoreMessage, MessageUpdateSource) -> Void)?
     public let globalMessageIdsPeerIdNamespaces: Set<GlobalMessageIdsNamespace>
     public let initializeChatListWithHole: (topLevel: ChatListHole?, groups: ChatListHole?)
     public let messageHoles: [PeerId.Namespace: [MessageId.Namespace: Set<MessageTags>]]
@@ -111,8 +120,12 @@ public final class SeedConfiguration {
         isPeerUpgradeMessage: @escaping (Message) -> Bool,
         automaticThreadIndexInfo: @escaping (PeerId, Int64) -> StoredMessageHistoryThreadInfo?,
         customTagsFromAttributes: @escaping ([MessageAttribute]) -> [MemoryBuffer],
-        displaySavedMessagesAsTopicListPreferencesKey: ValueBoxKey
+        displaySavedMessagesAsTopicListPreferencesKey: ValueBoxKey,
+        // MARK: NAGRAM
+        beforeMessageUpdate: ((Transaction, Message, StoreMessage, MessageUpdateSource) -> Void)? = nil
     ) {
+        // MARK: NAGRAM
+        self.beforeMessageUpdate = beforeMessageUpdate
         self.globalMessageIdsPeerIdNamespaces = globalMessageIdsPeerIdNamespaces
         self.initializeChatListWithHole = initializeChatListWithHole
         self.messageHoles = messageHoles
