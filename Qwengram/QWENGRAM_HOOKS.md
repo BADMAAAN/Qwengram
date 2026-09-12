@@ -209,6 +209,38 @@ multiple revisions, newest-first/tie ordering, missing peers, empty archives and
 isolated corrupt entries. Full Swift/iOS build and visual runtime verification
 require macOS/Xcode and are unavailable on Windows. No Actions are used.
 
+## Per-message history action
+
+- **File:** `submodules/TelegramUI/Sources/ChatInterfaceStateContextMenus.swift`
+  **Section:** `contextMenuForChatPresentationInterfaceState` data loading and actions
+  **Reason:** Joins the existing menu data signal with
+  `qwengramMessageHistoryAvailable`. Only a single non-service, non-scheduled
+  message is eligible. HistoryUI additionally requires the cloud message namespace
+  and a cloud user/group/channel peer, excluding secret, scheduled, quick-reply,
+  local, ephemeral and unsupported namespaces before any archive read.
+  A full validated `load` in the current account's transaction must return a record;
+  missing or corrupt records return `false`, so no action is inserted. Capture
+  preferences do not hide existing history. Both edit and server-delete records
+  qualify if the ordinary message remains accessible in the menu's UI context.
+  **Navigation:** **Message History** dismisses the menu and pushes the public
+  `qwengramHistoryDetailController(context:messageId:)` entry point. It converts
+  the complete message ID to the existing archive key and delegates to the same
+  detail screen used by the browser. Detail reloads the record and handles a
+  missing/unreadable record if it changed after the visibility check.
+  **Rebase note:** Preserve the asynchronous join before `deliverOnMainQueue`,
+  the conditional action, and nearby `// MARK: NAGRAM` markers.
+
+- **File:** `submodules/TelegramUI/BUILD`
+  **Section:** TelegramUI dependencies
+  **Reason:** Adds a direct dependency on `QwengramHistoryUI`. Its visibility now
+  permits SettingsUI and TelegramUI only. No TelegramUI -> HistoryStorage edge
+  is needed; Postbox reads and archive key construction remain inside HistoryUI.
+
+No capture logic, archive format or second detail UI is introduced. Validation
+uses source review, eligibility/error fixture models and target-level dependency
+inspection on Windows; a full iOS build and interactive navigation verification
+remain unavailable without macOS/Xcode. No Actions are used.
+
 ## Other upstream hooks
 
 - **File:** `submodules/TelegramUI/Components/PeerInfo/PeerInfoScreen/Sources/PeerInfoSettingsItems.swift`

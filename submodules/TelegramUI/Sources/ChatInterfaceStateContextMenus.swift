@@ -30,6 +30,8 @@ import NagramStrings
 import TranslateUI
 // MARK: QWENGRAM
 import QwengramSettingsUI
+// MARK: NAGRAM
+import QwengramHistoryUI
 import DebugSettingsUI
 import ChatPresentationInterfaceState
 import Pasteboard
@@ -1035,12 +1037,28 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
         return (data, updatingMessageMedia, infoSummaryData, appConfig, isMessageRead, messageViewsPrivacyTips, availableReactions, translationSettings, loggingSettings, notificationSoundList, accountPeer)
     }
     
-    return dataSignal
+    // MARK: NAGRAM
+    let historyAvailable: Signal<Bool, NoError> = messages.count == 1 && !isScheduled && !isAction
+        ? qwengramMessageHistoryAvailable(context: context, messageId: message.id)
+        : .single(false)
+    return combineLatest(dataSignal, historyAvailable)
     |> deliverOnMainQueue
-    |> map { data, updatingMessageMedia, infoSummaryData, appConfig, isMessageRead, messageViewsPrivacyTips, availableReactions, translationSettings, loggingSettings, notificationSoundList, accountPeer -> ContextController.Items in
+    |> map { menuData, historyAvailable -> ContextController.Items in
+        // MARK: NAGRAM
+        let (data, updatingMessageMedia, infoSummaryData, appConfig, isMessageRead, messageViewsPrivacyTips, availableReactions, translationSettings, loggingSettings, notificationSoundList, accountPeer) = menuData
         let isPremium = accountPeer?.isPremium ?? false
 
         var actions: [NagramManagedMessageMenuItem] = []
+
+        // MARK: NAGRAM
+        if historyAvailable {
+            actions.append(.action(ContextMenuActionItem(text: "Message History", icon: { theme in
+                return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Message"), color: theme.actionSheet.primaryTextColor)
+            }, action: { _, f in
+                f(.dismissWithoutContent)
+                controllerInteraction.navigationController()?.pushViewController(qwengramHistoryDetailController(context: context, messageId: messages[0].id))
+            })))
+        }
 
         if isSharedMediaPolls && messages.count == 1 {
             actions.append(.viewInChat, .action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.SharedMedia_ViewInChat, icon: { theme in

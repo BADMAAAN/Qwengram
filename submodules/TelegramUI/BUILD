@@ -79,6 +79,8 @@ swift_library(
         "//Nagram/Translate:NagramTranslate",  # MARK: NAGRAM
         # MARK: QWENGRAM
         "//Qwengram/SettingsUI:QwengramSettingsUI",
+        # // MARK: NAGRAM
+        "//Qwengram/HistoryUI:QwengramHistoryUI",
         "//submodules/MediaPlayer:UniversalMediaPlayer",
         "//submodules/TelegramVoip:TelegramVoip",
         "//submodules/DeviceAccess:DeviceAccess",

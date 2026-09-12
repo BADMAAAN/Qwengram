@@ -132,6 +132,29 @@ private enum QwengramHistoryDetailState {
     case unreadable
 }
 
+public func qwengramMessageHistoryAvailable(context: AccountContext, messageId: EngineMessage.Id) -> Signal<Bool, NoError> {
+    guard messageId.namespace == Namespaces.Message.Cloud,
+          messageId.peerId.namespace == Namespaces.Peer.CloudUser
+            || messageId.peerId.namespace == Namespaces.Peer.CloudGroup
+            || messageId.peerId.namespace == Namespaces.Peer.CloudChannel else {
+        return .single(false)
+    }
+    let key = QwengramHistoryMessageKey(peerId: messageId.peerId.toInt64(), namespace: messageId.namespace, id: messageId.id)
+    return context.account.postbox.transaction { transaction -> Bool in
+        do {
+            return try QwengramHistoryStore.load(transaction: transaction, key: key) != nil
+        } catch {
+            // A missing/invalid archive must never prevent the normal menu opening.
+            return false
+        }
+    }
+}
+
+public func qwengramHistoryDetailController(context: AccountContext, messageId: EngineMessage.Id) -> ViewController {
+    let key = QwengramHistoryMessageKey(peerId: messageId.peerId.toInt64(), namespace: messageId.namespace, id: messageId.id)
+    return qwengramHistoryDetailController(context: context, key: key)
+}
+
 private func qwengramHistoryDetailController(context: AccountContext, key: QwengramHistoryMessageKey) -> ViewController {
     let formatter = qwengramHistoryDateFormatter()
     let record: Signal<QwengramHistoryDetailState, NoError> = .single(.loading)

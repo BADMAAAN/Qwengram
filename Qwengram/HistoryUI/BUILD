@@ -17,5 +17,8 @@ swift_library(
         "//submodules/TelegramCore:TelegramCore",
         "//submodules/TelegramPresentationData:TelegramPresentationData",
     ],
-    visibility = ["//Qwengram/SettingsUI:__pkg__"],
+    visibility = [
+        "//Qwengram/SettingsUI:__pkg__",
+        "//submodules/TelegramUI:__pkg__",
+    ],
 )
