@@ -79,7 +79,8 @@ enum AccountStateMutationOperation {
     case AddScheduledMessages([StoreMessage])
     case AddQuickReplyMessages([StoreMessage])
     case DeleteMessagesWithGlobalIds([Int32])
-    case DeleteMessages([MessageId])
+    // MARK: NAGRAM
+    case DeleteMessages([MessageId], QwengramHistoryServerDeleteSource?)
     case EditMessage(MessageId, StoreMessage)
     case UpdateMessagePoll(MediaId, Api.Poll?, Api.PollResults)
     case UpdateMessageReactions(MessageId, Int64?, Api.MessageReactions, Int32?)
@@ -390,8 +391,9 @@ struct AccountMutableState {
         self.addOperation(.DeleteMessagesWithGlobalIds(globalIds))
     }
     
-    mutating func deleteMessages(_ messageIds: [MessageId]) {
-        self.addOperation(.DeleteMessages(messageIds))
+    // MARK: NAGRAM
+    mutating func deleteMessages(_ messageIds: [MessageId], serverDeleteSource: QwengramHistoryServerDeleteSource? = nil) {
+        self.addOperation(.DeleteMessages(messageIds, serverDeleteSource))
     }
     
     mutating func addSentScheduledMessageIds(_ messageIds: [MessageId]) {

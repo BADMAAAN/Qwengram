@@ -42,6 +42,58 @@ func qwengramBeforeMessageUpdate(transaction: Transaction, old: Message, new: St
     }
 }
 
+enum QwengramHistoryServerDeleteSource: String {
+    case updateDeleteMessages
+    case updateDeleteChannelMessages
+    case channelDifference
+}
+
+// A server deletion confirms disappearance, not who initiated it.
+// Called in the live transaction immediately before Telegram's normal deletion.
+func qwengramBeforeServerDelete(transaction: Transaction, ids: [MessageId], source: QwengramHistoryServerDeleteSource) {
+    var seen = Set<MessageId>()
+    for id in ids {
+        guard seen.insert(id).inserted,
+              id.namespace == Namespaces.Message.Cloud,
+              id.peerId.namespace == Namespaces.Peer.CloudUser || id.peerId.namespace == Namespaces.Peer.CloudGroup || id.peerId.namespace == Namespaces.Peer.CloudChannel,
+              let old = transaction.getMessage(id) else {
+            // Local deletes and repeated server echoes have no live OLD to capture.
+            continue
+        }
+        // Delete updates carry no cause. Conservatively exclude all timed messages,
+        // even before their countdown begins, rather than mislabel expiration.
+        guard !old.attributes.contains(where: { $0 is AutoremoveTimeoutMessageAttribute || $0 is AutoclearTimeoutMessageAttribute }),
+              !old.media.contains(where: { media in
+                  if media is TelegramMediaExpiredContent {
+                      return true
+                  }
+                  if let action = media as? TelegramMediaAction, case .historyCleared = action.action {
+                      return true
+                  }
+                  return false
+              }) else {
+            continue
+        }
+        do {
+            let key = QwengramHistoryMessageKey(peerId: id.peerId.toInt64(), namespace: id.namespace, id: id.id)
+            var record = try QwengramHistoryStore.load(transaction: transaction, key: key) ?? QwengramHistoryRecord(key: key, threadId: old.threadId)
+            guard record.nextRevision < Int64.max else {
+                throw QwengramHistoryStorageError.invalidRevisionSequence
+            }
+            let number = record.nextRevision
+            let observedTimestamp = Int64(Date().timeIntervalSince1970)
+            record.threadId = old.threadId
+            record.revisions.append(QwengramHistoryRevision(number: number, observedTimestamp: observedTimestamp, snapshot: qwengramHistorySnapshot(old)))
+            record.events.append(QwengramHistoryEvent(type: .delete, source: source.rawValue, reason: .serverDelete, observedTimestamp: observedTimestamp, revisionNumber: number))
+            record.nextRevision += 1
+            try QwengramHistoryStore.upsert(transaction: transaction, record: record)
+        } catch {
+            // Continue with the remaining IDs and the caller's ordinary deletion.
+            NSLog("QwengramHistory: archive write failed; Telegram message deletion will continue")
+        }
+    }
+}
+
 private func qwengramHistorySnapshot(_ message: Message) -> QwengramHistorySnapshot {
     var snapshot = QwengramHistorySnapshot(text: message.text, originalMessageTimestamp: Int64(message.timestamp))
     snapshot.authorPeerId = message.author?.id.toInt64()

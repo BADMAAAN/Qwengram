@@ -101,6 +101,59 @@ These cases are checked by source review and an operation-order model on Windows
 they are not a live Postbox/Swift runtime test. Full app build and runtime validation
 still require macOS/Xcode. No Actions are used.
 
+## Server delete capture
+
+- **File:** `submodules/TelegramCore/Sources/Account/AccountIntermediateState.swift`
+  **Section:** `DeleteMessages`, `deleteMessages`
+  **Reason:** Carries an optional typed server source with the existing ordered
+  deletion operation. The default is `nil`, including scheduled/ephemeral/quick-reply
+  callers. Global-ID deletion operations originate only in `updateDeleteMessages`.
+  **Rebase note:** Preserve the source through operation replay/optimization.
+  Swift modification sites use `// MARK: NAGRAM`.
+
+- **File:** `submodules/TelegramCore/Sources/State/AccountStateManagementUtils.swift`
+  **Section:** accepted `updateDeleteChannelMessages`, channel difference
+  `otherUpdates`, and deletion operation replay
+  **Reason:** Marks only explicit server delete updates. During replay, calls
+  `qwengramBeforeServerDelete` before the existing physical deletion. Global IDs
+  are resolved by `Transaction.messageIdsForGlobalIds`, the same lookup used by
+  Telegram's delete path (cloud users and basic groups); channel/supergroup IDs
+  retain their peer ID and cloud namespace.
+  **Rebase note:** Keep pts acceptance, operation order, resource cleanup, thread
+  statistics and deleted-message notifications unchanged. Do not mark generic
+  deletes or infer deletes from missing messages in channel differences.
+
+Integration requires a live OLD cloud message in a private chat, basic group,
+channel or supergroup. Each ID is captured once per call. It appends one OLD
+revision and one `.delete` event with reason `serverDelete` and source
+`updateDeleteMessages`, `updateDeleteChannelMessages` or `channelDifference`, then
+performs one validated upsert. The event confirms server-reported deletion; the
+initiator is unknown. It must never be displayed as "deleted by the interlocutor".
+The existing snapshot fields and TelegramCore -> HistoryStorage -> Postbox
+dependency direction are reused; no Postbox API or BUILD change is needed.
+
+Local delete-for-me/delete-for-everyone, clear history, validation cleanup,
+min-available history, and local expiration do not call this hook. Scheduled,
+ephemeral, quick-reply and secret-chat namespaces are excluded. Delete updates
+carry no cause, so all messages with autoremove/autoclear attributes (including
+unstarted timers and view-once) are conservatively skipped, even for a manual
+server deletion. Expired-media tombstones and history-cleared placeholders are
+also skipped. A local interactive delete physically removes OLD in its transaction;
+a subsequent server echo or repeated update has no live OLD and does not archive
+an earlier HistoryStorage revision as a new delete snapshot.
+
+Read/decode/validation/encoding/size errors are caught per ID, with a content-free
+diagnostic. Other IDs and Telegram's normal delete continue; snapshot/event are
+never written separately. Process/database failures remain outside Swift error
+recovery, as with edit capture.
+
+Delete validation uses source review and a transaction-order model on Windows:
+private/basic-group global-ID resolution, channel/supergroup peer identity,
+duplicate IDs/echoes, local deletion followed by echo, all excluded namespaces,
+TTL/autoclear/expired/clear placeholders, non-server cleanup paths and injected
+storage failures. This is not a Swift/Postbox runtime test; macOS/Xcode build and
+runtime validation remain unavailable here. No Actions are used.
+
 ## Other upstream hooks
 
 - **File:** `submodules/TelegramUI/Components/PeerInfo/PeerInfoScreen/Sources/PeerInfoSettingsItems.swift`
