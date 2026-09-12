@@ -69,10 +69,12 @@ private enum QwengramSettingsEntry: ItemListNodeEntry {
 private final class QwengramSettingsArguments {
     let openBotsHub: () -> Void
     let openQwenProvider: () -> Void
+    let openHistorySettings: () -> Void
 
-    init(openBotsHub: @escaping () -> Void, openQwenProvider: @escaping () -> Void) {
+    init(openBotsHub: @escaping () -> Void, openQwenProvider: @escaping () -> Void, openHistorySettings: @escaping () -> Void) {
         self.openBotsHub = openBotsHub
         self.openQwenProvider = openQwenProvider
+        self.openHistorySettings = openHistorySettings
     }
 }
 
@@ -80,7 +82,8 @@ public func qwengramSettingsController(context: AccountContext) -> ViewControlle
     var pushControllerImpl: ((ViewController) -> Void)?
     let arguments = QwengramSettingsArguments(
         openBotsHub: { pushControllerImpl?(qwengramBotsController(context: context)) },
-        openQwenProvider: { pushControllerImpl?(qwengramAISettingsController(context: context)) }
+        openQwenProvider: { pushControllerImpl?(qwengramAISettingsController(context: context)) },
+        openHistorySettings: { pushControllerImpl?(qwengramHistorySettingsController(context: context)) }
     )
     let signal = combineLatest(
         context.sharedContext.presentationData,
@@ -101,9 +104,9 @@ public func qwengramSettingsController(context: AccountContext) -> ViewControlle
             .navigation(4, 1, "Open Bots Hub", botsHubEnabled, arguments.openBotsHub),
             .header(5, 2, "AI"),
             .navigation(6, 2, "Qwen Provider", true, arguments.openQwenProvider),
-            .header(7, 3, "Coming Later"),
+            .header(7, 3, "Messages"),
             .placeholder(8, 3, "Ghost Mode", "Coming soon"),
-            .placeholder(9, 3, "Message History", "Coming soon"),
+            .navigation(9, 3, "Message History", true, arguments.openHistorySettings),
             .placeholder(10, 3, "Media Archive", "Coming soon"),
             .header(11, 4, "About"),
             .about(12, 4, "Qwengram Foundation")

@@ -15,6 +15,7 @@ swift_library(
     deps = [
         # // MARK: NAGRAM
         "//Qwengram/HistoryStorage:QwengramHistoryStorage",
+        "//Qwengram/Settings:QwengramSettings",
         "//submodules/TelegramApi:TelegramApi",
         "//submodules/MtProtoKit:MtProtoKit",
         "//submodules/SSignalKit/SwiftSignalKit:SwiftSignalKit",

@@ -1,9 +1,13 @@
 import Foundation
 import Postbox
 import QwengramHistoryStorage
+import QwengramSettings
 
 // Compiled inside TelegramCore. Never retain the transaction or re-enter message writes.
 func qwengramBeforeMessageUpdate(transaction: Transaction, old: Message, new: StoreMessage, source: MessageUpdateSource) {
+    guard QwengramSettings.shared.messageHistoryEnabled, QwengramSettings.shared.saveEditedMessages else {
+        return
+    }
     // Local -> cloud identity/resource reconciliation is not a message edit.
     guard old.id.namespace == Namespaces.Message.Cloud,
           old.id.peerId.namespace != Namespaces.Peer.SecretChat,
@@ -51,6 +55,9 @@ enum QwengramHistoryServerDeleteSource: String {
 // A server deletion confirms disappearance, not who initiated it.
 // Called in the live transaction immediately before Telegram's normal deletion.
 func qwengramBeforeServerDelete(transaction: Transaction, ids: [MessageId], source: QwengramHistoryServerDeleteSource) {
+    guard QwengramSettings.shared.messageHistoryEnabled, QwengramSettings.shared.saveServerDeletedMessages else {
+        return
+    }
     var seen = Set<MessageId>()
     for id in ids {
         guard seen.insert(id).inserted,

@@ -43,6 +43,7 @@
   **Section:** TelegramCore sources and dependencies
   **Reason:** Compiles `//Qwengram/HistoryIntegration:Sources` inside TelegramCore
   and links `//Qwengram/HistoryStorage:QwengramHistoryStorage`.
+  Also links `//Qwengram/Settings:QwengramSettings` for capture gating.
   **Module:** TelegramCore.
   **Rebase note:** Integration is a source filegroup, not a Swift module importing
   TelegramCore. The dependency direction is TelegramCore -> HistoryStorage ->
@@ -153,6 +154,28 @@ duplicate IDs/echoes, local deletion followed by echo, all excluded namespaces,
 TTL/autoclear/expired/clear placeholders, non-server cleanup paths and injected
 storage failures. This is not a Swift/Postbox runtime test; macOS/Xcode build and
 runtime validation remain unavailable here. No Actions are used.
+
+## History settings
+
+The existing Qwengram Settings Message History entry opens History Settings.
+All three switches use `QwengramSettings` / `@QwengramDefault` with persistent
+`UserDefaults.standard` keys (all default to `true`):
+
+- `qwengram.settings.messageHistoryEnabled`
+- `qwengram.settings.saveEditedMessages`
+- `qwengram.settings.saveServerDeletedMessages`
+
+The screen observes the existing UserDefaults notification mechanism through
+`QwengramSettingsSignal`. Each capture callback reads current settings before
+snapshotting or accessing HistoryStorage: edit requires master AND save-edited;
+server delete requires master AND save-server-deleted. Turning master off leaves
+the individual preferences intact. Settings changes never remove stored history.
+The separate general Qwengram Enabled preference is not the history master.
+No new upstream callbacks or message history list UI are introduced.
+
+Validation on Windows: source review and all eight boolean gating combinations.
+Persistence follows the existing UserDefaults wrapper; an actual app restart,
+UI interaction and full iOS build still require macOS/Xcode. No Actions are used.
 
 ## Other upstream hooks
 

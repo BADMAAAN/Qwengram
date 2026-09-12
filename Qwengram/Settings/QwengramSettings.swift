@@ -56,6 +56,15 @@ public final class QwengramSettings {
     @QwengramDefault("qwengram.settings.botsHubEnabled", true)
     public var botsHubEnabled: Bool
 
+    @QwengramDefault("qwengram.settings.messageHistoryEnabled", true)
+    public var messageHistoryEnabled: Bool
+
+    @QwengramDefault("qwengram.settings.saveEditedMessages", true)
+    public var saveEditedMessages: Bool
+
+    @QwengramDefault("qwengram.settings.saveServerDeletedMessages", true)
+    public var saveServerDeletedMessages: Bool
+
     @QwengramStringDefault("qwengram.settings.qwenModel", "qwen-plus")
     public var qwenModel: String
 }
