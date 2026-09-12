@@ -177,6 +177,38 @@ Validation on Windows: source review and all eight boolean gating combinations.
 Persistence follows the existing UserDefaults wrapper; an actual app restart,
 UI interaction and full iOS build still require macOS/Xcode. No Actions are used.
 
+## History browser integration
+
+- `Qwengram/SettingsUI` links `Qwengram/HistoryUI` and opens its History browser
+  from **History Settings > View History**, including while capture is disabled.
+- `Qwengram/HistoryUI` reads only `context.account.postbox` in a transaction on
+  opening each screen. Reopen the browser to refresh its snapshot; tapping a row
+  loads the current record by its full archive key. No network requests are made.
+- `QwengramHistoryStore.listRecords` is a read-only, per-entry fault-isolating
+  alternative to strict `readArchive`: it returns valid records in stored order
+  plus an unreadable count. It uses the existing version/size/key/revision
+  validation. Detail reuses throwing `load`; neither API repairs or deletes data.
+- The browser sorts by latest observation descending, retaining storage order
+  for ties. Rows show locally cached peer titles, a bounded text preview, event
+  type and local date/time. Missing peers use **Unknown or deleted peer**; deleted
+  users use Telegram's existing title helper. Invalid packed peer IDs are never
+  passed to Postbox's asserting initializer.
+- Detail shows full saved text and events oldest first. Events whose revisions
+  were evicted show an unavailable-text message; unpaired revisions remain
+  visible as **Saved revision**. Server deletion is always **Deleted on server**,
+  without attributing an initiator. Empty, loading, missing and unreadable states
+  are explicit; one corrupt row does not prevent displaying other rows.
+
+Dependency direction: SettingsUI -> HistoryUI -> HistoryStorage -> Postbox.
+HistoryUI also uses existing AccountContext, TelegramCore and list UI modules;
+HistoryStorage has no UI or TelegramCore dependency. No upstream file, capture
+hook, stored JSON format, ordinary chat bubble or archive write API is changed.
+
+Validation here uses source review and fixture models for edit-only, delete-only,
+multiple revisions, newest-first/tie ordering, missing peers, empty archives and
+isolated corrupt entries. Full Swift/iOS build and visual runtime verification
+require macOS/Xcode and are unavailable on Windows. No Actions are used.
+
 ## Other upstream hooks
 
 - **File:** `submodules/TelegramUI/Components/PeerInfo/PeerInfoScreen/Sources/PeerInfoSettingsItems.swift`

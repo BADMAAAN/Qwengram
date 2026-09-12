@@ -12,6 +12,7 @@ swift_library(
     deps = [
         "//Qwengram/AI:QwengramAI",
         "//Qwengram/Bots:QwengramBots",
+        "//Qwengram/HistoryUI:QwengramHistoryUI",
         "//Qwengram/Settings:QwengramSettings",
         "//Qwengram/SettingsSignal:QwengramSettingsSignal",
         "//submodules/AsyncDisplayKit",

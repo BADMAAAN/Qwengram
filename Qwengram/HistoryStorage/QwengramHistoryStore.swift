@@ -23,6 +23,21 @@ public enum QwengramHistoryStore {
         return try transaction.getOrderedListItems(collectionId: QwengramHistoryCollection.id).map { try self.decode($0) }
     }
 
+    // Browser reads isolate invalid entries without hiding the partial-read failure.
+    // The strict readArchive API and all write behavior remain unchanged.
+    public static func listRecords(transaction: Transaction) -> (records: [QwengramHistoryRecord], unreadableCount: Int) {
+        var records: [QwengramHistoryRecord] = []
+        var unreadableCount = 0
+        for item in transaction.getOrderedListItems(collectionId: QwengramHistoryCollection.id) {
+            do {
+                records.append(try self.decode(item))
+            } catch {
+                unreadableCount += 1
+            }
+        }
+        return (records, unreadableCount)
+    }
+
     @discardableResult
     public static func upsert(transaction: Transaction, record: QwengramHistoryRecord) throws -> QwengramHistoryRecord {
         try self.validate(record)

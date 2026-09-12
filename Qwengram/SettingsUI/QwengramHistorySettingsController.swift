@@ -3,6 +3,7 @@ import Display
 import Foundation
 import ItemListUI
 import PresentationDataUtils
+import QwengramHistoryUI
 import QwengramSettings
 import QwengramSettingsSignal
 import SwiftSignalKit
@@ -11,11 +12,12 @@ import TelegramPresentationData
 private struct QwengramHistorySettingsEntry: ItemListNodeEntry {
     let stableId: Int32
     let title: String
-    let value: Bool
-    let updated: (Bool) -> Void
+    var value: Bool = false
+    var updated: (Bool) -> Void = { _ in }
+    var action: (() -> Void)? = nil
 
     var section: ItemListSectionId {
-        return stableId == 0 ? 0 : 1
+        return stableId == 0 ? 0 : (stableId == 3 ? 2 : 1)
     }
 
     static func == (lhs: QwengramHistorySettingsEntry, rhs: QwengramHistorySettingsEntry) -> Bool {
@@ -27,11 +29,15 @@ private struct QwengramHistorySettingsEntry: ItemListNodeEntry {
     }
 
     func item(presentationData: ItemListPresentationData, arguments: Any) -> ListViewItem {
+        if let action = action {
+            return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, title: title, label: "", sectionId: section, style: .blocks, action: action)
+        }
         return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: title, value: value, sectionId: section, style: .blocks, updated: updated)
     }
 }
 
 public func qwengramHistorySettingsController(context: AccountContext) -> ViewController {
+    var pushControllerImpl: ((ViewController) -> Void)?
     let signal = combineLatest(context.sharedContext.presentationData, qwengramHistorySettingsSignal())
     |> deliverOnMainQueue
     |> map { presentationData, settings -> (ItemListControllerState, (ItemListNodeState, Any)) in
@@ -44,6 +50,9 @@ public func qwengramHistorySettingsController(context: AccountContext) -> ViewCo
             }),
             QwengramHistorySettingsEntry(stableId: 2, title: "Save server-deleted messages", value: settings.2, updated: {
                 QwengramSettings.shared.saveServerDeletedMessages = $0
+            }),
+            QwengramHistorySettingsEntry(stableId: 3, title: "View History", action: {
+                pushControllerImpl?(qwengramHistoryController(context: context))
             })
         ]
         let listPresentationData = ItemListPresentationData(presentationData)
@@ -53,5 +62,8 @@ public func qwengramHistorySettingsController(context: AccountContext) -> ViewCo
     }
     let controller = ItemListController(context: context, state: signal)
     controller.navigationPresentation = .default
+    pushControllerImpl = { [weak controller] viewController in
+        (controller?.navigationController as? NavigationController)?.pushViewController(viewController, animated: true)
+    }
     return controller
 }

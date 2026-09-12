@@ -48,6 +48,12 @@ Archive reads return the complete bounded list in last-write order because
 Transaction exposes a full-list API. Corrupt entries fail reads explicitly;
 remove-by-key and clear remain available without decoding.
 
+The browser may use read-only `listRecords(transaction:)` to decode each entry
+independently. It returns valid records in stored order and an `unreadableCount`
+for explicit partial-read reporting, without repairing or removing failed entries.
+`load(transaction:key:)` remains the throwing single-record read API. Neither the
+existing strict `readArchive` contract nor the saved format has changed.
+
 Bazel target: `//Qwengram/HistoryStorage:QwengramHistoryStorage`. Foundation is
 an SDK import; Postbox is the sole Bazel dependency. No TelegramCore dependency,
 app wiring, UI, hooks, migrations, or upstream modifications are included.
